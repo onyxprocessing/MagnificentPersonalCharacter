@@ -7,7 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Users, DollarSign, ShoppingCart, Eye } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Search, Users, DollarSign, ShoppingCart, Eye, Plus } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import Sidebar from '@/components/layout/Sidebar';
 import { Link } from 'wouter';
@@ -22,6 +23,195 @@ interface AffiliateDetailsModalProps {
       Code: string;
     };
   };
+}
+
+interface AddAffiliateModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSuccess: () => void;
+}
+
+function AddAffiliateModal({ open, onOpenChange, onSuccess }: AddAffiliateModalProps) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    code: '',
+    share: '',
+    discount: '',
+    payoutMethod: '',
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('/api/affiliates', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          'First Name': formData.firstName,
+          'Last Name': formData.lastName,
+          Email: formData.email,
+          Phone: formData.phone,
+          Code: formData.code,
+          share: parseFloat(formData.share) || 0,
+          discount: parseFloat(formData.discount) || 0,
+          'Payout Method': formData.payoutMethod,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create affiliate');
+      }
+
+      // Reset form
+      setFormData({
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        code: '',
+        share: '',
+        discount: '',
+        payoutMethod: '',
+      });
+
+      onSuccess();
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Error creating affiliate:', error);
+      alert('Failed to create affiliate. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add New Affiliate</DialogTitle>
+          <DialogDescription>
+            Create a new affiliate account with commission and discount settings.
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="firstName">First Name</Label>
+              <Input
+                id="firstName"
+                value={formData.firstName}
+                onChange={(e) => handleChange('firstName', e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="lastName">Last Name</Label>
+              <Input
+                id="lastName"
+                value={formData.lastName}
+                onChange={(e) => handleChange('lastName', e.target.value)}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              value={formData.email}
+              onChange={(e) => handleChange('email', e.target.value)}
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="phone">Phone</Label>
+            <Input
+              id="phone"
+              value={formData.phone}
+              onChange={(e) => handleChange('phone', e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="code">Affiliate Code</Label>
+            <Input
+              id="code"
+              value={formData.code}
+              onChange={(e) => handleChange('code', e.target.value)}
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="share">Commission Rate (%)</Label>
+              <Input
+                id="share"
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
+                value={formData.share}
+                onChange={(e) => handleChange('share', e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="discount">Discount Rate (%)</Label>
+              <Input
+                id="discount"
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
+                value={formData.discount}
+                onChange={(e) => handleChange('discount', e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="payoutMethod">Payout Method</Label>
+            <Select value={formData.payoutMethod} onValueChange={(value) => handleChange('payoutMethod', value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select payout method" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="paypal">PayPal</SelectItem>
+                <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                <SelectItem value="check">Check</SelectItem>
+                <SelectItem value="crypto">Cryptocurrency</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? 'Creating...' : 'Create Affiliate'}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 function AffiliateDetailsModal({ affiliate }: AffiliateDetailsModalProps) {
@@ -184,8 +374,9 @@ export default function AffiliatesPage() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [page, setPage] = useState(1);
+  const [showAddModal, setShowAddModal] = useState(false);
   
-  const { data, isLoading, error } = useAffiliates({
+  const { data, isLoading, error, refetch } = useAffiliates({
     page,
     limit: 10,
     search,
@@ -203,6 +394,10 @@ export default function AffiliatesPage() {
   const handleStatusFilter = (value: string) => {
     setStatus(value === 'all' ? '' : value);
     setPage(1); // Reset to first page when filtering
+  };
+
+  const handleAffiliateCreated = () => {
+    refetch();
   };
 
   if (error) {
@@ -253,6 +448,10 @@ export default function AffiliatesPage() {
                   <SelectItem value="inactive">Inactive</SelectItem>
                 </SelectContent>
               </Select>
+              <Button onClick={() => setShowAddModal(true)} className="bg-blue-600 hover:bg-blue-700">
+                <Plus className="h-4 w-4 mr-2" />
+                Add New Affiliate
+              </Button>
             </div>
           </div>
         </div>
@@ -377,6 +576,12 @@ export default function AffiliatesPage() {
           </div>
         </div>
       </div>
+
+      <AddAffiliateModal
+        open={showAddModal}
+        onOpenChange={setShowAddModal}
+        onSuccess={handleAffiliateCreated}
+      />
     </div>
   );
 }

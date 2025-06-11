@@ -938,6 +938,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+
+  app.post('/api/affiliates', async (req, res) => {
+    try {
+      const affiliateData = req.body;
+      
+      const { createAffiliate } = await import('../client/src/lib/airtable');
+      const newAffiliate = await createAffiliate(affiliateData);
+      
+      res.json({
+        success: true,
+        data: newAffiliate,
+      });
+    } catch (error) {
+      console.error('Error creating affiliate:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to create affiliate',
+      });
+    }
+  });
   
   const httpServer = createServer(app);
   return httpServer;

@@ -613,3 +613,23 @@ export async function getAffiliateStats(affiliateCode: string): Promise<{
     };
   }
 }
+
+export async function createAffiliate(affiliateData: any): Promise<any> {
+  const fields: Record<string, any> = {};
+  
+  // Map the form data to Airtable field names based on the screenshot
+  if (affiliateData['First Name']) fields['First Name'] = affiliateData['First Name'];
+  if (affiliateData['Last Name']) fields['Last Name'] = affiliateData['Last Name'];
+  if (affiliateData.Email) fields.Email = affiliateData.Email;
+  if (affiliateData.Phone) fields.Phone = affiliateData.Phone;
+  if (affiliateData.Code) fields.Code = affiliateData.Code;
+  if (affiliateData.share !== undefined) fields.share = affiliateData.share;
+  if (affiliateData.discount !== undefined) fields.discount = affiliateData.discount;
+  if (affiliateData['Payout Method']) fields.type = affiliateData['Payout Method'];
+  
+  // Set default password field as shown in the Airtable
+  fields.Password = 'Password';
+  
+  const data = { fields };
+  return fetchFromAirtable('/tblbQbjX0RQbguX5e', 'POST', data);
+}
