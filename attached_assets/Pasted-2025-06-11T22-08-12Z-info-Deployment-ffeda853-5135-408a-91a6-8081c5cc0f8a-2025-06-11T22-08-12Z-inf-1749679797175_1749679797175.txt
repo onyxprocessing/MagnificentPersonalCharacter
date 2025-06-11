@@ -1,0 +1,67 @@
+2025-06-11T22:08:12Z info: Deployment: ffeda853-5135-408a-91a6-8081c5cc0f8a
+2025-06-11T22:08:12Z info: Build: 52c6d62e-7f1b-44a1-9aee-eca6bd870f06
+2025-06-11T22:08:12Z info: Connecting to builder
+2025-06-11T22:08:13Z info: Builder connected
+2025-06-11T22:08:14Z info: Installing packages
+--> npm install
+
+
+up to date, audited 550 packages in 7s
+
+71 packages are looking for funding
+  run `npm fund` for details
+
+
+5 moderate severity vulnerabilities
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+npm notice
+npm notice New major version of npm available! 10.9.0 -> 11.4.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.4.1
+npm notice To update run: npm install -g npm@11.4.1
+npm notice
+
+2025-06-11T22:08:20Z info: Skipping Build as no Build command set
+2025-06-11T22:08:20Z info: Pushing pid1 binary layer...
+2025-06-11T22:08:22Z info: Pushing hosting layer...
+2025-06-11T22:08:22Z info: Pushing Repl layer...
+2025-06-11T22:08:22Z info: Retrieved cached nix layer
+2025-06-11T22:08:23Z info: Created hosting layer
+2025-06-11T22:08:30Z info: Created pid1 binary layer
+2025-06-11T22:08:52Z info: Created Repl layer
+2025-06-11T22:08:52Z info: Pushed image manifest
+2025-06-11T22:08:53Z info: Pushed soci index manifest
+2025-06-11T22:08:57Z info: Creating Autoscale service
+error proxying request error=dial tcp 127.0.0.1:5000: connect: connection refused
+error proxying request error=dial tcp 127.0.0.1:5000: connect: connection refused
+starting up user application
+error proxying request error=dial tcp 127.0.0.1:5000: connect: connection refused
+> NODE_ENV=production tsx server/index.ts
+
+          ^
+    at <anonymous> (/home/runner/workspace/server/index.ts:58:5)
+    at serveStatic (/home/runner/workspace/server/vite.ts:74:11)
+          ^
+    at <anonymous> (/home/runner/workspace/server/index.ts:58:5)
+
+    at <anonymous> (/home/runner/workspace/server/index.ts:58:5)
+
+(node:363) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+/home/runner/workspace/server/vite.ts:74
+          ^
+command finished with error [sh -c npm start]: exit status 1
+error proxying request error=dial tcp 127.0.0.1:5000: connect: connection refused
+error proxying request error=dial tcp 127.0.0.1:5000: connect: connection refused
+error proxying request error=dial tcp 127.0.0.1:5000: connect: connection refused
+error proxying request error=dial tcp 127.0.0.1:5000: connect: connection refused
+    throw new Error(
+error proxying request error=dial tcp 127.0.0.1:5000: connect: connection refused
+(node:464) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+error proxying request error=dial tcp 127.0.0.1:5000: connect: connection refused
+
+(node:516) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+error proxying request error=dial tcp 127.0.0.1:5000: connect: connection refused
+> NODE_ENV=production tsx server/index.ts

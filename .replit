@@ -10,7 +10,7 @@ channel = "stable-24_11"
 packages = ["gh"]
 
 [deployment]
-run = ["node", "index.js"]
+run = ["sh", "-c", "npm start"]
 deploymentTarget = "autoscale"
 ignorePorts = false
 
