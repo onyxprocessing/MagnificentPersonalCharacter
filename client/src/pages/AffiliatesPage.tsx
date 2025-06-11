@@ -400,7 +400,20 @@ export default function AffiliatesPage() {
     status,
   });
 
-  const affiliates = data?.data || [];
+  // Sort affiliates to show active ones first, then inactive ones
+  const affiliates = (data?.data || []).sort((a, b) => {
+    const statusA = a.fields.status || 'Inactive';
+    const statusB = b.fields.status || 'Inactive';
+    
+    // Active comes before Inactive
+    if (statusA === 'Active' && statusB !== 'Active') return -1;
+    if (statusA !== 'Active' && statusB === 'Active') return 1;
+    
+    // If both have the same status, sort by name
+    const nameA = `${a.fields['First Name']} ${a.fields['Last Name']}`.toLowerCase();
+    const nameB = `${b.fields['First Name']} ${b.fields['Last Name']}`.toLowerCase();
+    return nameA.localeCompare(nameB);
+  });
   const pagination = data?.pagination;
 
   const handleSearch = (value: string) => {
