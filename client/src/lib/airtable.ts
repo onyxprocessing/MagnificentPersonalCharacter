@@ -15,7 +15,7 @@ async function fetchFromAirtable(
 ): Promise<any> {
   try {
     const url = `${AIRTABLE_API_URL}/${AIRTABLE_BASE_ID}${endpoint}`;
-    
+
     const options: RequestInit = {
       method,
       headers: {
@@ -24,14 +24,14 @@ async function fetchFromAirtable(
       },
       body: data ? JSON.stringify(data) : undefined,
     };
-    
+
     const response = await fetch(url, options);
-    
+
     if (!response.ok) {
       const error = await response.text();
       throw new Error(`Airtable API error: ${error}`);
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error('Error fetching from Airtable:', error);
@@ -48,22 +48,22 @@ export async function fetchOrders(options: {
   search?: string;
 } = {}): Promise<{ records: any[]; total: number }> {
   const { page = 1, limit = 10, status, search } = options;
-  
+
   let filterByFormula = '';
   if (status) {
     filterByFormula = `?filterByFormula={status}="${status}"`;
   }
-  
+
   // Note: Airtable doesn't directly support search across fields, so this would be
   // more complex in a real implementation
 
   const response = await fetchFromAirtable(`/carts${filterByFormula}`);
-  
+
   // Manual pagination since we're fetching all records
   const startIndex = (page - 1) * limit;
   const endIndex = startIndex + limit;
   const paginatedRecords = response.records.slice(startIndex, endIndex);
-  
+
   return {
     records: paginatedRecords,
     total: response.records.length,
@@ -76,7 +76,7 @@ export async function fetchOrderById(id: string): Promise<any> {
 
 export async function updateOrder(id: string, updates: Partial<Order>): Promise<any> {
   const fields: Record<string, any> = {};
-  
+
   // Map the schema property names to Airtable field names
   if (updates.status) fields.status = updates.status;
   if (updates.firstname) fields.firstname = updates.firstname;
@@ -89,7 +89,7 @@ export async function updateOrder(id: string, updates: Partial<Order>): Promise<
   if (updates.zip) fields.zip = updates.zip;
   if (updates.shippingMethod) fields.shippingmethod = updates.shippingMethod;
   if (updates.total) fields.total = updates.total;
-  
+
   const data = { fields };
   return fetchFromAirtable(`/carts/${id}`, 'PATCH', data);
 }
@@ -174,9 +174,9 @@ export async function fetchProducts(options: {
       }
     },
   ];
-  
+
   const { page = 1, limit = 10, category, search } = options;
-  
+
   // Filter by category if provided
   let filteredProducts = mockProducts;
   if (category) {
@@ -184,7 +184,7 @@ export async function fetchProducts(options: {
       p.fields.category.toLowerCase() === category.toLowerCase()
     );
   }
-  
+
   // Filter by search term if provided
   if (search) {
     const searchLower = search.toLowerCase();
@@ -193,12 +193,12 @@ export async function fetchProducts(options: {
       p.fields.description.toLowerCase().includes(searchLower)
     );
   }
-  
+
   // Manual pagination
   const startIndex = (page - 1) * limit;
   const endIndex = startIndex + limit;
   const paginatedRecords = filteredProducts.slice(startIndex, endIndex);
-  
+
   return {
     records: paginatedRecords,
     total: filteredProducts.length,
@@ -214,7 +214,7 @@ export async function fetchProductById(id: string): Promise<any> {
 export async function createProduct(product: Partial<Product>): Promise<any> {
   // In a real implementation, this would create a product in Airtable
   const fields: Record<string, any> = {};
-  
+
   if (product.name) fields.name = product.name;
   if (product.description) fields.description = product.description;
   if (product.sku) fields.sku = product.sku;
@@ -227,11 +227,11 @@ export async function createProduct(product: Partial<Product>): Promise<any> {
   if (product.imageAlt) fields.imageAlt = product.imageAlt;
   if (product.status) fields.status = product.status;
   if (product.trackInventory !== undefined) fields.trackInventory = product.trackInventory;
-  
+
   const data = { fields };
   // This would be the actual implementation once the products table is set up
   // return fetchFromAirtable('/products', 'POST', data);
-  
+
   // For now, mock a successful response
   return {
     id: Math.floor(Math.random() * 1000).toString(),
@@ -243,7 +243,7 @@ export async function createProduct(product: Partial<Product>): Promise<any> {
 export async function updateProduct(id: string, updates: Partial<Product>): Promise<any> {
   // Similar to createProduct, this would update an existing product
   const fields: Record<string, any> = {};
-  
+
   if (updates.name) fields.name = updates.name;
   if (updates.description) fields.description = updates.description;
   if (updates.sku) fields.sku = updates.sku;
@@ -256,11 +256,11 @@ export async function updateProduct(id: string, updates: Partial<Product>): Prom
   if (updates.imageAlt) fields.imageAlt = updates.imageAlt;
   if (updates.status) fields.status = updates.status;
   if (updates.trackInventory !== undefined) fields.trackInventory = updates.trackInventory;
-  
+
   const data = { fields };
   // This would be the actual implementation
   // return fetchFromAirtable(`/products/${id}`, 'PATCH', data);
-  
+
   // For now, mock a successful response
   return {
     id,
@@ -272,7 +272,7 @@ export async function updateProduct(id: string, updates: Partial<Product>): Prom
 export async function deleteProduct(id: string): Promise<any> {
   // This would delete a product
   // return fetchFromAirtable(`/products/${id}`, 'DELETE');
-  
+
   // Mock successful deletion
   return { id, deleted: true };
 }
@@ -282,19 +282,19 @@ export async function deleteProduct(id: string): Promise<any> {
 export async function fetchDashboardStats(): Promise<any> {
   // This would fetch various stats for the dashboard
   const ordersResponse = await fetchFromAirtable('/carts');
-  
+
   // Calculate stats from the orders
   const orders = ordersResponse.records || [];
-  
+
   // Count total orders
   const totalOrders = orders.length;
-  
+
   // Calculate total revenue
   const totalRevenue = orders.reduce((sum: number, order: any) => {
     const total = parseFloat(order.fields.total || order.fields.totalammount || '0');
     return sum + (isNaN(total) ? 0 : total);
   }, 0);
-  
+
   // Count unique customers
   const uniqueCustomers = new Set();
   orders.forEach((order: any) => {
@@ -302,11 +302,11 @@ export async function fetchDashboardStats(): Promise<any> {
       uniqueCustomers.add(order.fields.email);
     }
   });
-  
+
   // For products and low stock, using mock data until we have the products table
   const totalProducts = 12;
   const lowStockProducts = 2;
-  
+
   return {
     totalOrders,
     totalRevenue,
@@ -319,20 +319,20 @@ export async function fetchDashboardStats(): Promise<any> {
 export async function fetchSalesData(): Promise<any> {
   // This would fetch sales data for charts
   // For now, using mock data
-  
+
   // Generate daily sales for last 7 days
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const dailySales = days.map(day => ({
     day,
     amount: Math.floor(Math.random() * 500) + 100
   }));
-  
+
   // Calculate weekly total
   const weeklySales = dailySales.reduce((sum, day) => sum + day.amount, 0);
-  
+
   // Mock average order value
   const avgOrderValue = Math.floor(weeklySales / 7);
-  
+
   return {
     weeklySales,
     avgOrderValue,
@@ -351,7 +351,7 @@ export async function fetchPopularProducts(): Promise<any> {
 
 export function mapAirtableOrderToSchema(record: any): Order {
   const fields = record.fields;
-  
+
   // Parse cart items if they exist
   let cartItems: CartItem[] = [];
   try {
@@ -361,7 +361,7 @@ export function mapAirtableOrderToSchema(record: any): Order {
   } catch (error) {
     console.error('Error parsing cart items:', error);
   }
-  
+
   return {
     id: record.id,
     sessionId: fields.sessionid || '',
@@ -385,7 +385,7 @@ export function mapAirtableOrderToSchema(record: any): Order {
 
 export function mapAirtableProductToSchema(record: any): Product {
   const fields = record.fields;
-  
+
   return {
     id: parseInt(record.id),
     name: fields.name || '',
@@ -414,7 +414,7 @@ export async function fetchAffiliates(options: {
   status?: string;
 } = {}): Promise<{ records: any[]; total: number }> {
   const { page = 1, limit = 10, search, status } = options;
-  
+
   let filterByFormula = '';
   if (search) {
     // Search across First Name, Last Name, Email, and Code fields + filter for valid emails
@@ -423,14 +423,14 @@ export async function fetchAffiliates(options: {
     // Only show affiliates with emails
     filterByFormula = `?filterByFormula=NOT({Email}="")`;
   }
-  
+
   const response = await fetchFromAirtable(`/tblbQbjX0RQbguX5e${filterByFormula}`);
-  
+
   // Get all orders to check affiliate activity in the last 30 days
   const ordersResponse = await fetchFromAirtable('/tblhjfzTX2zjf22s1?filterByFormula=AND({status}="payment_selection", {affiliatecode}!="")');
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  
+
   // Add status to each affiliate record
   const enhancedRecords = response.records.map((affiliate: any) => {
     const affiliateCode = affiliate.fields.Code;
@@ -438,7 +438,7 @@ export async function fetchAffiliates(options: {
       const orderDate = new Date(order.fields.createdat);
       return order.fields.affiliatecode === affiliateCode && orderDate >= thirtyDaysAgo;
     });
-    
+
     return {
       ...affiliate,
       fields: {
@@ -447,17 +447,17 @@ export async function fetchAffiliates(options: {
       }
     };
   });
-  
+
   // Filter by status if specified
   const filteredRecords = status ? 
     enhancedRecords.filter((affiliate: any) => affiliate.fields.status.toLowerCase() === status.toLowerCase()) :
     enhancedRecords;
-  
+
   // Manual pagination
   const startIndex = (page - 1) * limit;
   const endIndex = startIndex + limit;
   const paginatedRecords = filteredRecords.slice(startIndex, endIndex);
-  
+
   return {
     records: paginatedRecords,
     total: filteredRecords.length,
@@ -473,12 +473,12 @@ export async function fetchOrdersByAffiliateCode(affiliateCode: string, options:
   limit?: number;
 } = {}): Promise<{ records: any[]; total: number }> {
   const { page = 1, limit = 10 } = options;
-  
+
   // Filter orders by affiliate code AND payment_selection status
   const filterByFormula = `?filterByFormula=AND({affiliatecode}="${affiliateCode}", {status}="payment_selection")`;
-  
+
   const response = await fetchFromAirtable(`/tblhjfzTX2zjf22s1${filterByFormula}`);
-  
+
   // Fetch all products once to avoid rate limiting
   let allProducts: any[] = [];
   try {
@@ -493,12 +493,12 @@ export async function fetchOrdersByAffiliateCode(affiliateCode: string, options:
     if (record.fields.cartitems) {
       try {
         const cartItems = JSON.parse(record.fields.cartitems);
-        
+
         // Enhance cart items with product data from cached products
         const enhancedCartItems = cartItems.map((item: any) => {
           if (item.productId) {
             const productResponse = allProducts.find((p: any) => p.fields.id === item.productId);
-            
+
             if (productResponse && productResponse.fields) {
               // Get price based on selected weight
               let weightPrice = '0';
@@ -508,7 +508,7 @@ export async function fetchOrdersByAffiliateCode(affiliateCode: string, options:
               } else {
                 weightPrice = productResponse.fields.price || '0';
               }
-              
+
               return {
                 ...item,
                 product: {
@@ -526,7 +526,7 @@ export async function fetchOrdersByAffiliateCode(affiliateCode: string, options:
           }
           return item;
         });
-        
+
         return {
           ...record,
           fields: {
@@ -541,12 +541,12 @@ export async function fetchOrdersByAffiliateCode(affiliateCode: string, options:
     }
     return record;
   });
-  
+
   // Manual pagination
   const startIndex = (page - 1) * limit;
   const endIndex = startIndex + limit;
   const paginatedRecords = enhancedRecords.slice(startIndex, endIndex);
-  
+
   return {
     records: paginatedRecords,
     total: enhancedRecords.length,
@@ -563,42 +563,42 @@ export async function getAffiliateStats(affiliateCode: string): Promise<{
     const affiliatesResponse = await fetchAffiliates({ limit: 1000 });
     const affiliate = affiliatesResponse.records.find((aff: any) => aff.fields.Code === affiliateCode);
     const shareRate = affiliate ? parseFloat(affiliate.fields.share || '0') / 100 : 0.1;
-    
+
     const ordersResponse = await fetchOrdersByAffiliateCode(affiliateCode);
     const orders = ordersResponse.records;
-    
+
     const totalOrders = orders.length;
     const totalSales = orders.reduce((sum: number, order: any) => {
       const total = parseFloat(order.fields.total || order.fields.totalammount || '0');
       return sum + (isNaN(total) ? 0 : total);
     }, 0);
-    
+
     // Calculate commission based on 85% profit margin of items total (excluding shipping)
     const totalCommission = orders.reduce((sum: number, order: any) => {
       if (!order.fields.cartitems) return sum;
-      
+
       const cartItems = JSON.parse(order.fields.cartitems);
       let itemsTotal = 0;
-      
+
       // Calculate total items cost
       cartItems.forEach((item: any) => {
         const itemPrice = parseFloat(item.product?.price || '0') * item.quantity;
         itemsTotal += itemPrice;
       });
-      
+
       // Apply affiliate discount first
       const affiliateDiscount = parseFloat(affiliate.fields.discount || '0');
       const discountAmount = (itemsTotal * affiliateDiscount) / 100;
       const subtotalAfterDiscount = itemsTotal - discountAmount;
-      
+
       // Apply 85% profit margin to get commission base (company keeps 15% for costs)
       const profitBase = subtotalAfterDiscount * 0.85;
-      
+
       // Calculate affiliate commission from the profit
       const orderCommission = profitBase * shareRate;
       return sum + (isNaN(orderCommission) ? 0 : orderCommission);
     }, 0);
-    
+
     return {
       totalOrders,
       totalCommission,
@@ -616,20 +616,24 @@ export async function getAffiliateStats(affiliateCode: string): Promise<{
 
 export async function createAffiliate(affiliateData: any): Promise<any> {
   const fields: Record<string, any> = {};
-  
-  // Map the form data to Airtable field names based on the screenshot
+
+  // Map the form data to Airtable field names
   if (affiliateData['First Name']) fields['First Name'] = affiliateData['First Name'];
   if (affiliateData['Last Name']) fields['Last Name'] = affiliateData['Last Name'];
   if (affiliateData.Email) fields.Email = affiliateData.Email;
   if (affiliateData.Phone) fields.Phone = affiliateData.Phone;
   if (affiliateData.Code) fields.Code = affiliateData.Code;
-  if (affiliateData.share !== undefined) fields.share = affiliateData.share;
-  if (affiliateData.discount !== undefined) fields.discount = affiliateData.discount;
-  if (affiliateData['Payout Method']) fields.type = affiliateData['Payout Method'];
-  
+
+  // Convert share and discount to strings as Airtable expects text
+  if (affiliateData.share !== undefined) fields.share = String(affiliateData.share);
+  if (affiliateData.discount !== undefined) fields.discount = String(affiliateData.discount);
+
+  // Map payout method to the PayoutMethod field
+  if (affiliateData['Payout Method']) fields.PayoutMethod = affiliateData['Payout Method'];
+
   // Set default password field as shown in the Airtable
   fields.Password = 'Password';
-  
+
   const data = { fields };
   return fetchFromAirtable('/tblbQbjX0RQbguX5e', 'POST', data);
 }
