@@ -631,8 +631,9 @@ export async function createAffiliate(affiliateData: any): Promise<any> {
   // Map payout method to the PayoutMethod field
   if (affiliateData['Payout Method']) fields.PayoutMethod = affiliateData['Payout Method'];
 
-  // Set default password field as shown in the Airtable
-  fields.Password = 'Password';
+  // Set password field from form data or use default
+  if (affiliateData.password) fields.Password = affiliateData.password;
+  else fields.Password = 'Password!';
 
   const data = { fields };
   return fetchFromAirtable('/tblbQbjX0RQbguX5e', 'POST', data);

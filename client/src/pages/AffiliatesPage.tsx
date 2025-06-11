@@ -42,6 +42,7 @@ function AddAffiliateModal({ open, onOpenChange, onSuccess }: AddAffiliateModalP
     share: '',
     discount: '',
     payoutMethod: '',
+    password: 'Password!',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -63,6 +64,7 @@ function AddAffiliateModal({ open, onOpenChange, onSuccess }: AddAffiliateModalP
           share: parseFloat(formData.share) || 0,
           discount: parseFloat(formData.discount) || 0,
           'Payout Method': formData.payoutMethod,
+          password: formData.password,
         }),
       });
 
@@ -80,6 +82,7 @@ function AddAffiliateModal({ open, onOpenChange, onSuccess }: AddAffiliateModalP
         share: '',
         discount: '',
         payoutMethod: '',
+        password: 'Password!',
       });
 
       onSuccess();
@@ -375,7 +378,7 @@ export default function AffiliatesPage() {
   const [status, setStatus] = useState('');
   const [page, setPage] = useState(1);
   const [showAddModal, setShowAddModal] = useState(false);
-  
+
   const { data, isLoading, error, refetch } = useAffiliates({
     page,
     limit: 10,
