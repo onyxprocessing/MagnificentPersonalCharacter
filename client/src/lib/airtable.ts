@@ -635,6 +635,9 @@ export async function createAffiliate(affiliateData: any): Promise<any> {
   if (affiliateData.password) fields.Password = affiliateData.password;
   else fields.Password = 'Password!';
 
+  // Set added by field from form data
+  if (affiliateData.addedby) fields.addedby = affiliateData.addedby;
+
   const data = { fields };
   return fetchFromAirtable('/tblbQbjX0RQbguX5e', 'POST', data);
 }

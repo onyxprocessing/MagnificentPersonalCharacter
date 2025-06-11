@@ -43,6 +43,7 @@ function AddAffiliateModal({ open, onOpenChange, onSuccess }: AddAffiliateModalP
     discount: '',
     payoutMethod: '',
     password: 'Password!',
+    addedby: '',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -65,6 +66,7 @@ function AddAffiliateModal({ open, onOpenChange, onSuccess }: AddAffiliateModalP
           discount: parseFloat(formData.discount) || 0,
           'Payout Method': formData.payoutMethod,
           password: formData.password,
+          addedby: formData.addedby,
         }),
       });
 
@@ -83,6 +85,7 @@ function AddAffiliateModal({ open, onOpenChange, onSuccess }: AddAffiliateModalP
         discount: '',
         payoutMethod: '',
         password: 'Password!',
+        addedby: '',
       });
 
       onSuccess();
@@ -201,6 +204,17 @@ function AddAffiliateModal({ open, onOpenChange, onSuccess }: AddAffiliateModalP
                 <SelectItem value="crypto">Cryptocurrency</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="addedby">Added By (Staff Member)</Label>
+            <Input
+              id="addedby"
+              value={formData.addedby}
+              onChange={(e) => handleChange('addedby', e.target.value)}
+              placeholder="Enter staff member name"
+              required
+            />
           </div>
 
           <div className="flex justify-end space-x-2 pt-4">
@@ -500,6 +514,7 @@ export default function AffiliatesPage() {
                             <TableHead>Email</TableHead>
                             <TableHead>Affiliate Code</TableHead>
                             <TableHead>Status</TableHead>
+                            <TableHead>Added By</TableHead>
                             <TableHead>Joined</TableHead>
                             <TableHead>Actions</TableHead>
                           </TableRow>
@@ -523,6 +538,9 @@ export default function AffiliatesPage() {
                                 >
                                   {affiliate.fields.status || 'Inactive'}
                                 </Badge>
+                              </TableCell>
+                              <TableCell>
+                                {affiliate.fields.addedby || 'N/A'}
                               </TableCell>
                               <TableCell>
                                 {formatDate(new Date(affiliate.createdTime))}
