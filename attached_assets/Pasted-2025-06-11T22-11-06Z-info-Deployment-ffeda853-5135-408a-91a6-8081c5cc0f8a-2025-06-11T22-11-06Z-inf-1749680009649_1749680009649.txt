@@ -1,0 +1,85 @@
+2025-06-11T22:11:06Z info: Deployment: ffeda853-5135-408a-91a6-8081c5cc0f8a
+2025-06-11T22:11:06Z info: Build: a2fbc44e-7658-4919-9ef0-419d69013c24
+2025-06-11T22:11:06Z info: Connecting to builder
+2025-06-11T22:11:07Z info: Builder connected
+2025-06-11T22:11:07Z info: Installing packages
+--> npm install
+
+
+up to date, audited 550 packages in 5s
+
+71 packages are looking for funding
+
+  run `npm fund` for details
+
+
+5 moderate severity vulnerabilities
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+
+npm notice
+npm notice New major version of npm available! 10.9.0 -> 11.4.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.4.1
+npm notice To update run: npm install -g npm@11.4.1
+npm notice
+
+2025-06-11T22:11:13Z info: Starting Build
+
+> rest-express@1.0.0 build
+> vite build
+
+
+vite v5.4.19 building for production...
+
+transforming...
+
+✓ 3227 modules transformed.
+
+rendering chunks...
+
+computing gzip size...
+
+../dist/public/index.html                                1.37 kB │ gzip:   0.67 kB
+
+../dist/public/assets/index-CPWlKn5-.css                85.26 kB │ gzip:  14.24 kB
+
+✓ built in 9.81s
+
+2025-06-11T22:11:25Z info: Pushing pid1 binary layer...
+2025-06-11T22:11:26Z info: Pushing Repl layer...
+2025-06-11T22:11:26Z info: Retrieved cached nix layer
+2025-06-11T22:11:26Z info: Created hosting layer
+2025-06-11T22:11:27Z info: Created pid1 binary layer
+2025-06-11T22:11:44Z info: Created Repl layer
+2025-06-11T22:11:45Z info: Pushed image manifest
+2025-06-11T22:11:45Z info: Pushed soci index manifest
+2025-06-11T22:11:50Z info: Creating Autoscale service
+error proxying request error=dial tcp 127.0.0.1:5000: connect: connection refused
+error proxying request error=dial tcp 127.0.0.1:5000: connect: connection refused
+    at addChunk (node:internal/streams/readable:561:12)
+    ^
+    triggerUncaughtException(
+    at Socket.readFromStdout (/home/runner/workspace/node_modules/esbuild/lib/main.js:579:7)
+    at Socket.emit (node:events:518:28)
+Node.js v22.10.0
+/home/runner/workspace/server/vite.ts:111:18: ERROR: Expected ";" but found "function"
+Node.js v22.10.0
+/home/runner/workspace/server/vite.ts:111:18: ERROR: Expected ";" but found "function"
+    at failureErrorWithLog (/home/runner/workspace/node_modules/esbuild/lib/main.js:1463:15)
+/home/runner/workspace/server/vite.ts:111:18: ERROR: Expected ";" but found "function"
+error proxying request error=dial tcp 127.0.0.1:5000: connect: connection refused
+    at /home/runner/workspace/node_modules/esbuild/lib/main.js:734:50
+    ^
+error proxying request error=dial tcp 127.0.0.1:5000: connect: connection refused
+> NODE_ENV=production tsx server/index.ts
+node:internal/modules/run_main:122
+command finished with error [sh -c npm start]: exit status 1
+    at failureErrorWithLog (/home/runner/workspace/node_modules/esbuild/lib/main.js:1463:15)
+> rest-express@1.0.0 start
+Error [TransformError]: Transform failed with 1 error:
+command finished with error [sh -c npm start]: exit status 1
+error proxying request error=dial tcp 127.0.0.1:5000: connect: connection refused
+error proxying request error=dial tcp 127.0.0.1:5000: connect: connection refused

@@ -13,6 +13,7 @@ packages = ["gh"]
 run = ["sh", "-c", "npm start"]
 deploymentTarget = "autoscale"
 ignorePorts = false
+build = ["sh", "-c", "npm run build"]
 
 [workflows]
 runButton = "Development Server"
