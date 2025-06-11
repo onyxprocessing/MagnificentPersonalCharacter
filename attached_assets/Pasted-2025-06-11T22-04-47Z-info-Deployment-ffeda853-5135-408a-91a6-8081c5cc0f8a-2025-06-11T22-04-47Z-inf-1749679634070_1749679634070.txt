@@ -1,0 +1,37 @@
+2025-06-11T22:04:47Z info: Deployment: ffeda853-5135-408a-91a6-8081c5cc0f8a
+2025-06-11T22:04:47Z info: Build: 59bde963-af89-4f6d-9c5f-63f921627aec
+2025-06-11T22:04:47Z info: Connecting to builder
+2025-06-11T22:04:48Z info: Builder connected
+2025-06-11T22:04:48Z info: Installing packages
+2025-06-11T22:04:49Z info: Skipping Build as no Build command set
+2025-06-11T22:04:49Z info: Pushing pid1 binary layer...
+2025-06-11T22:04:50Z info: Pushing Repl layer...
+2025-06-11T22:04:50Z info: Pushing hosting layer...
+2025-06-11T22:04:50Z info: Retrieved cached nix layer
+2025-06-11T22:04:50Z info: Created hosting layer
+2025-06-11T22:04:51Z info: Created pid1 binary layer
+2025-06-11T22:05:16Z info: Created Repl layer
+2025-06-11T22:05:17Z info: Pushed image manifest
+2025-06-11T22:05:17Z info: Pushed soci index manifest
+2025-06-11T22:05:22Z info: Creating Autoscale service
+error proxying request error=dial tcp 127.0.0.1:5000: connect: connection refused
+}
+error proxying request error=dial tcp 127.0.0.1:5000: connect: connection refused
+node:internal/modules/cjs/loader:1252
+    at TracingChannel.traceSync (node:diagnostics_channel:315:14)
+    at Function._resolveFilename (node:internal/modules/cjs/loader:1249:15)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:218:24)
+error proxying request error=dial tcp 127.0.0.1:5000: connect: connection refused
+    at wrapModuleLoad (node:internal/modules/cjs/loader:218:24)
+error proxying request error=dial tcp 127.0.0.1:5000: connect: connection refused
+
+}
+error proxying request error=dial tcp 127.0.0.1:5000: connect: connection refused
+error proxying request error=dial tcp 127.0.0.1:5000: connect: connection refused
+error proxying request error=dial tcp 127.0.0.1:5000: connect: connection refused
+Error: Cannot find module '/home/runner/workspace/index.js'
+  code: 'MODULE_NOT_FOUND',
+  ^
+error proxying request error=dial tcp 127.0.0.1:5000: connect: connection refused
+error proxying request error=dial tcp 127.0.0.1:5000: connect: connection refused
+crash loop detected
