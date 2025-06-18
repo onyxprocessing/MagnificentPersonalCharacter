@@ -15,12 +15,14 @@ interface Customer {
   totalSpent: number;
   lastOrderDate: string;
   createdAt: string;
+  affiliateCodes: string[];
   orders: {
     id: string;
     status: string;
     total: number;
     items: number;
     createdAt: string;
+    affiliateCode?: string;
   }[];
 }
 
@@ -76,6 +78,7 @@ export function useCustomers({
               // Use optional chaining and fallbacks
               lastOrderDate: customer.lastOrderDate ? new Date(customer.lastOrderDate) : new Date(),
               createdAt: customer.createdAt ? new Date(customer.createdAt) : new Date(),
+              affiliateCodes: Array.isArray(customer.affiliateCodes) ? customer.affiliateCodes : [],
               orders: Array.isArray(customer.orders) 
                 ? customer.orders.map((order: any) => ({
                     ...order,

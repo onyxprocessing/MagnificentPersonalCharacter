@@ -63,40 +63,40 @@ export default function CustomersPage() {
   const [searchInput, setSearchInput] = useState('');
   const isMobile = useIsMobile();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  
+
   const { data, isLoading, error } = useCustomers({ page, limit, search });
-  
+
   // Safely handle the data with proper fallbacks
   const customers = data?.data || [];
   const pagination = data?.pagination || { page, limit, total: 0 };
   const totalCustomers = pagination.total || 0;
   const totalPages = Math.ceil(totalCustomers / limit);
-  
+
   const handleSearch = () => {
     setSearch(searchInput);
     setPage(1);
   };
-  
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleSearch();
     }
   };
-  
+
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
   };
-  
+
   const handleLimitChange = (value: string) => {
     setLimit(parseInt(value));
     setPage(1);
   };
-  
+
   const renderPagination = () => {
     const pageNumbers = [];
     let startPage = Math.max(1, page - 2);
     let endPage = Math.min(totalPages, page + 2);
-    
+
     if (endPage - startPage < 4 && totalPages > 5) {
       if (startPage === 1) {
         endPage = Math.min(5, totalPages);
@@ -104,11 +104,11 @@ export default function CustomersPage() {
         startPage = Math.max(1, endPage - 4);
       }
     }
-    
+
     for (let i = startPage; i <= endPage; i++) {
       pageNumbers.push(i);
     }
-    
+
     return (
       <Pagination>
         <PaginationContent>
@@ -118,7 +118,7 @@ export default function CustomersPage() {
               className={page <= 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
             />
           </PaginationItem>
-          
+
           {startPage > 1 && (
             <>
               <PaginationItem>
@@ -131,7 +131,7 @@ export default function CustomersPage() {
               )}
             </>
           )}
-          
+
           {pageNumbers.map(number => (
             <PaginationItem key={number}>
               <PaginationLink
@@ -142,7 +142,7 @@ export default function CustomersPage() {
               </PaginationLink>
             </PaginationItem>
           ))}
-          
+
           {endPage < totalPages && (
             <>
               {endPage < totalPages - 1 && (
@@ -157,7 +157,7 @@ export default function CustomersPage() {
               </PaginationItem>
             </>
           )}
-          
+
           <PaginationItem>
             <PaginationNext
               onClick={() => page < totalPages && handlePageChange(page + 1)}
@@ -172,7 +172,7 @@ export default function CustomersPage() {
   const renderCustomerDetails = (customer: any) => {
     const fullName = `${customer.firstname} ${customer.lastname}`.trim();
     const displayName = fullName || customer.email || 'Unknown Customer';
-    
+
     return (
       <div className="space-y-1">
         <div className="font-medium">{displayName}</div>
@@ -195,13 +195,13 @@ export default function CustomersPage() {
   const renderCustomerAddress = (customer: any) => {
     const hasAddress = customer.address || customer.city || customer.state || customer.zip;
     if (!hasAddress) return <span className="text-muted-foreground">No address</span>;
-    
+
     const addressParts = [];
     if (customer.address) addressParts.push(customer.address);
     if (customer.city) addressParts.push(customer.city);
     if (customer.state) addressParts.push(customer.state);
     if (customer.zip) addressParts.push(customer.zip);
-    
+
     return (
       <div className="flex items-start text-sm">
         <MapPin className="mr-1 h-4 w-4 flex-shrink-0 text-muted-foreground" />
@@ -285,7 +285,7 @@ export default function CustomersPage() {
       </TableRow>
     );
   };
-  
+
   const renderMobileCustomerCard = (customer: any) => {
     return (
       <Card key={customer.id} className="mb-4">
@@ -361,25 +361,25 @@ export default function CustomersPage() {
       </Card>
     );
   };
-  
+
   return (
     <div className="flex h-screen bg-background">
       {/* Sidebar for desktop */}
       <Sidebar />
-      
+
       {/* Mobile Sidebar */}
       <MobileSidebar 
         isOpen={isMobileSidebarOpen} 
         onClose={() => setIsMobileSidebarOpen(false)} 
       />
-      
+
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header 
           onToggleMobileMenu={() => setIsMobileSidebarOpen(true)}
           title="Customers"
         />
-        
+
         <main className="flex-1 overflow-y-auto bg-background p-4 md:p-6">
           <div className="space-y-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -406,7 +406,7 @@ export default function CustomersPage() {
                 </Button>
               </div>
             </div>
-            
+
             <div className="mt-4 flex items-center justify-between">
               <div>
                 {!isLoading && (
@@ -434,13 +434,63 @@ export default function CustomersPage() {
                 <p className="text-sm text-muted-foreground hidden sm:block">per page</p>
               </div>
             </div>
-            
+
             {isMobile ? (
               <div className="mt-4 space-y-4">
                 {isLoading ? (
                   Array.from({ length: limit }).map((_, index) => renderMobileSkeletonCard(index))
                 ) : customers.length > 0 ? (
-                  customers.map(customer => renderMobileCustomerCard(customer))
+                  customers.map(customer => (
+                    <Card key={customer.id} className="mb-4">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-base">
+                          {`${customer.firstname} ${customer.lastname}`.trim() || customer.email || 'Unknown Customer'}
+                        </CardTitle>
+                        {customer.email && (
+                          <CardDescription>
+                            <div className="flex items-center">
+                              <Mail className="mr-1 h-3 w-3" />
+                              <span>{customer.email}</span>
+                            </div>
+                          </CardDescription>
+                        )}
+                      </CardHeader>
+                      <CardContent className="pb-3 pt-0">
+                        <div className="space-y-2">
+                          {customer.phone && (
+                            <div className="flex items-center text-sm">
+                              <Phone className="mr-1 h-3 w-3" />
+                              <span>{customer.phone}</span>
+                            </div>
+                          )}
+                          {renderCustomerAddress(customer)}
+                          {customer.affiliateCodes && customer.affiliateCodes.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {customer.affiliateCodes.map((code, index) => (
+                                <Badge key={index} variant="secondary" className="text-xs bg-blue-100 text-blue-800">
+                                  {code}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                          <div className="flex justify-between pt-2 border-t">
+                            <div>
+                              <div className="text-sm text-muted-foreground">Last Order</div>
+                              <div>{formatDate(customer.lastOrderDate, { month: 'short', day: 'numeric' })}</div>
+                            </div>
+                            <div>
+                              <div className="text-sm text-muted-foreground">Orders</div>
+                              <div className="text-center">{customer.totalOrders}</div>
+                            </div>
+                            <div>
+                              <div className="text-sm text-muted-foreground">Total Spent</div>
+                              <div className="font-medium">{formatCurrency(customer.totalSpent)}</div>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
                 ) : (
                   <Card>
                     <CardContent className="py-10 text-center">
@@ -487,7 +537,7 @@ export default function CustomersPage() {
                 </Table>
               </div>
             )}
-            
+
             {totalPages > 1 && (
               <div className="mt-4 flex items-center justify-center">
                 {renderPagination()}

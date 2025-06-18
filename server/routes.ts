@@ -631,8 +631,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             status: order.status || 'unknown',
             total: orderTotal,
             items: 1, // Simplified count
-            createdAt: orderDate
+            createdAt: orderDate,
+            affiliateCode: order.affiliateCode || null
           });
+          
+          // Track unique affiliate codes used by this customer
+          if (order.affiliateCode && !customer.affiliateCodes.includes(order.affiliateCode)) {
+            customer.affiliateCodes.push(order.affiliateCode);
+          }
           
           // Update last order date if this order is newer
           if (orderDate > customer.lastOrderDate) {
@@ -654,12 +660,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             totalSpent: orderTotal,
             lastOrderDate: orderDate,
             createdAt: orderDate,
+            affiliateCodes: order.affiliateCode ? [order.affiliateCode] : [],
             orders: [{
               id: order.id,
               status: order.status || 'unknown',
               total: orderTotal,
               items: 1, // Simplified count
-              createdAt: orderDate
+              createdAt: orderDate,
+              affiliateCode: order.affiliateCode || null
             }]
           });
         }
