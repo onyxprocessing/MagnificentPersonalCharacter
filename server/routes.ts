@@ -795,6 +795,134 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // USPS shipping routes
+  app.post('/api/orders/:id/create-shipping-label', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { serviceType = 'GROUND_ADVANTAGE' } = req.body;
+      
+      const order = await storage.getOrderById(id);
+      if (!order) {
+        return res.status(404).json({
+          success: false,
+          message: 'Order not found'
+        });
+      }
+
+      const { uspsService } = await import('./usps');
+      
+      // Parse cart items to determine package specs
+      const cartItems = order.cartItems && Array.isArray(order.cartItems) 
+        ? order.cartItems 
+        : (order.cartitems ? JSON.parse(order.cartitems) : []);
+      
+      const itemCount = cartItems.reduce((total: number, item: any) => total + (item.quantity || 1), 0);
+      const packageSpecs = uspsService.getPackageSpecs(itemCount);
+      
+      const toAddress = {
+        name: `${order.firstname} ${order.lastname}`,
+        address: order.address || '',
+        city: order.city || '',
+        state: order.state || '',
+        zip: order.zip || '',
+        phone: order.phone || ''
+      };
+
+      const fromAddress = uspsService.getDefaultFromAddress();
+      
+      // Validate customer address first
+      const addressValid = await uspsService.validateAddress(toAddress);
+      if (!addressValid) {
+        return res.status(400).json({
+          success: false,
+          message: 'Customer address could not be validated. Please verify the address details.'
+        });
+      }
+
+      const labelRequest = {
+        toAddress,
+        fromAddress,
+        packageType: packageSpecs.packageType,
+        serviceType: serviceType as 'GROUND_ADVANTAGE' | 'PRIORITY' | 'PRIORITY_EXPRESS',
+        weight: packageSpecs.weight
+      };
+
+      const labelResponse = await uspsService.createShippingLabel(labelRequest);
+      
+      // Update order with tracking number
+      await storage.updateOrder(id, {
+        trackingNumber: labelResponse.trackingNumber,
+        shippingCost: labelResponse.postage,
+        shippingLabelCreated: true,
+        shipped: true
+      });
+
+      res.json({
+        success: true,
+        data: {
+          trackingNumber: labelResponse.trackingNumber,
+          labelImage: labelResponse.labelImage,
+          postage: labelResponse.postage,
+          zone: labelResponse.zone
+        }
+      });
+    } catch (error) {
+      console.error('Error creating shipping label:', error);
+      res.status(500).json({
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to create shipping label'
+      });
+    }
+  });
+
+  app.get('/api/orders/:id/tracking', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const order = await storage.getOrderById(id);
+      
+      if (!order || !order.trackingNumber) {
+        return res.status(404).json({
+          success: false,
+          message: 'Order not found or tracking number not available'
+        });
+      }
+
+      const { uspsService } = await import('./usps');
+      const trackingInfo = await uspsService.getTrackingInfo(order.trackingNumber);
+      
+      res.json({
+        success: true,
+        data: trackingInfo
+      });
+    } catch (error) {
+      console.error('Error getting tracking info:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to get tracking information'
+      });
+    }
+  });
+
+  app.post('/api/validate-address', async (req, res) => {
+    try {
+      const { address } = req.body;
+      const { uspsService } = await import('./usps');
+      
+      const isValid = await uspsService.validateAddress(address);
+      
+      res.json({
+        success: true,
+        data: { valid: isValid }
+      });
+    } catch (error) {
+      console.error('Error validating address:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to validate address'
+      });
+    }
+  });
+
   // Stripe payment routes
   app.post('/api/create-payment-intent', async (req, res) => {
     try {

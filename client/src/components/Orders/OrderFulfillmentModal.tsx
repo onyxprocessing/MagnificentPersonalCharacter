@@ -10,6 +10,8 @@ import { Label } from '../ui/label';
 import { Separator } from '../ui/separator';
 import { debounce } from '@/lib/utils';
 import { formatCurrency } from '../../lib/utils';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Truck, Package, CheckCircle, Download, PrinterIcon } from 'lucide-react';
 
 interface OrderFulfillmentModalProps {
   order: Order | null;
@@ -36,6 +38,13 @@ export default function OrderFulfillmentModal({
   const [notes, setNotes] = useState<string>('');
   const [tracking, setTracking] = useState<string>('');
   const [isAutoSaving, setIsAutoSaving] = useState(false);
+  const [isCreatingLabel, setIsCreatingLabel] = useState(false);
+  const [serviceType, setServiceType] = useState<'GROUND_ADVANTAGE' | 'PRIORITY' | 'PRIORITY_EXPRESS'>('GROUND_ADVANTAGE');
+  const [labelData, setLabelData] = useState<{
+    trackingNumber: string;
+    labelImage: string;
+    postage: number;
+  } | null>(null);
 
   // Auto-save function with debounce
   const autoSaveOrder = useCallback(
@@ -69,7 +78,7 @@ export default function OrderFulfillmentModal({
         fulfilled: false // Start with all items unfulfilled
       }));
       setFulfillmentItems(items);
-      
+
       // Initialize notes and tracking from order data
       setNotes(order.notes || '');
       setTracking(order.tracking || '');
@@ -125,6 +134,98 @@ export default function OrderFulfillmentModal({
 
   const fulfilledCount = fulfillmentItems.filter(item => item.fulfilled).length;
   const totalCount = fulfillmentItems.length;
+
+   const createShippingLabel = async () => {
+    if (!order) return;
+
+    setIsCreatingLabel(true);
+
+    try {
+      const response = await fetch(`/api/orders/${order.id}/create-shipping-label`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ serviceType })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setLabelData({
+          trackingNumber: data.data.trackingNumber,
+          labelImage: data.data.labelImage,
+          postage: data.data.postage
+        });
+        setTracking(data.data.trackingNumber);
+
+        // Refresh order data
+        // if (onOrderUpdate) {
+        //   onOrderUpdate(order.id);
+        // }
+
+        alert(`Shipping label created successfully! Tracking: ${data.data.trackingNumber}`);
+      } else {
+        const errorData = await response.json();
+        alert(errorData.message || 'Failed to create shipping label');
+      }
+    } catch (error) {
+      console.error('Error creating shipping label:', error);
+      alert('Failed to create shipping label. Please check your USPS API configuration.');
+    } finally {
+      setIsCreatingLabel(false);
+    }
+  };
+
+  const downloadLabel = () => {
+    if (!labelData) return;
+
+    try {
+      const byteCharacters = atob(labelData.labelImage);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: 'application/pdf' });
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `shipping-label-${labelData.trackingNumber}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading label:', error);
+      alert('Failed to download shipping label');
+    }
+  };
+
+  const printLabel = () => {
+    if (!labelData) return;
+
+    try {
+      const byteCharacters = atob(labelData.labelImage);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: 'application/pdf' });
+
+      const url = window.URL.createObjectURL(blob);
+      const printWindow = window.open(url);
+      if (printWindow) {
+        printWindow.addEventListener('load', () => {
+          printWindow.print();
+        });
+      }
+    } catch (error) {
+      console.error('Error printing label:', error);
+      alert('Failed to print shipping label');
+    }
+  };
 
   if (!order) return null;
 
@@ -204,6 +305,49 @@ export default function OrderFulfillmentModal({
               </div>
             )}
           </div>
+
+          <Separator />
+
+          {/* Shipping Label Creation */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Create Shipping Label</Label>
+            <div className="flex items-center space-x-4">
+              <Select value={serviceType} onValueChange={(value) => setServiceType(value as 'GROUND_ADVANTAGE' | 'PRIORITY' | 'PRIORITY_EXPRESS')}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Select service" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="GROUND_ADVANTAGE">Ground Advantage</SelectItem>
+                  <SelectItem value="PRIORITY">Priority Mail</SelectItem>
+                  <SelectItem value="PRIORITY_EXPRESS">Priority Mail Express</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                onClick={createShippingLabel}
+                disabled={isCreatingLabel}
+                className="bg-blue-500 text-white hover:bg-blue-700"
+              >
+                {isCreatingLabel ? "Creating..." : "Create Label"}
+              </Button>
+            </div>
+          </div>
+
+          {labelData && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Shipping Label Actions</Label>
+              <div className="flex items-center space-x-4">
+                <Button onClick={downloadLabel} className="bg-green-500 text-white hover:bg-green-700">
+                  <Download className="mr-2 h-4 w-4" />
+                  Download Label
+                </Button>
+                <Button onClick={printLabel} className="bg-purple-500 text-white hover:bg-purple-700">
+                  <PrinterIcon className="mr-2 h-4 w-4" />
+                  Print Label
+                </Button>
+                <div>Postage: ${labelData.postage}</div>
+              </div>
+            </div>
+          )}
 
           <Separator />
 
