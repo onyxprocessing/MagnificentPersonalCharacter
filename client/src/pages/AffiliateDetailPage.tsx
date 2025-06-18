@@ -10,10 +10,16 @@ import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, 
 import { useState } from "react";
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import Sidebar from '@/components/layout/Sidebar';
+import MobileSidebar from '@/components/layout/MobileSidebar';
+import Header from '@/components/layout/Header';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export default function AffiliateDetailPage() {
   const { code } = useParams();
   const [dateFilter, setDateFilter] = useState<string>('all');
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const isMobile = useIsMobile();
   
   const { data: affiliatesData } = useAffiliates({ limit: 100 });
   const { data: ordersData } = useAffiliateOrders({ affiliateCode: code || '', limit: 200 });
@@ -84,18 +90,37 @@ export default function AffiliateDetailPage() {
   
   if (!affiliate) {
     return (
-      <div className="p-6">
-        <div className="flex items-center gap-4 mb-6">
-          <Link href="/affiliates">
-            <Button variant="outline" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Affiliates
-            </Button>
-          </Link>
-        </div>
-        <div className="text-center py-12">
-          <h3 className="text-lg font-semibold mb-2">Affiliate Not Found</h3>
-          <p className="text-muted-foreground">The affiliate with code "{code}" could not be found.</p>
+      <div className="flex h-screen bg-background">
+        {/* Sidebar for desktop */}
+        <Sidebar />
+        
+        {/* Mobile Sidebar */}
+        <MobileSidebar 
+          isOpen={isMobileSidebarOpen} 
+          onClose={() => setIsMobileSidebarOpen(false)} 
+        />
+        
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Header 
+            onToggleMobileMenu={() => setIsMobileSidebarOpen(true)}
+            title="Affiliate Details"
+          />
+          
+          <main className="flex-1 overflow-y-auto bg-background p-4 md:p-6">
+            <div className="flex items-center gap-4 mb-6">
+              <Link href="/affiliates">
+                <Button variant="outline" size="sm">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Affiliates
+                </Button>
+              </Link>
+            </div>
+            <div className="text-center py-12">
+              <h3 className="text-lg font-semibold mb-2">Affiliate Not Found</h3>
+              <p className="text-muted-foreground">The affiliate with code "{code}" could not be found.</p>
+            </div>
+          </main>
         </div>
       </div>
     );
@@ -388,287 +413,309 @@ export default function AffiliateDetailPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link href="/affiliates">
-          <Button variant="outline" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Affiliates
-          </Button>
-        </Link>
-      </div>
-
-      {/* Affiliate Info */}
-      <div className="grid gap-6 md:grid-cols-3">
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Affiliate Details
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Name</label>
-                <p className="text-lg font-semibold">
-                  {affiliate.fields['First Name']} {affiliate.fields['Last Name']}
-                </p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Email</label>
-                <p className="text-lg">{affiliate.fields.Email}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Affiliate Code</label>
-                <Badge variant="outline" className="text-lg font-mono">
-                  {affiliate.fields.Code}
-                </Badge>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Commission Rate</label>
-                <div className="flex items-center gap-1">
-                  <Percent className="h-4 w-4" />
-                  <span className="text-lg font-semibold">
-                    {affiliate.fields.share || 'N/A'}%
-                  </span>
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Customer Discount</label>
-                <div className="flex items-center gap-1">
-                  <Percent className="h-4 w-4" />
-                  <span className="text-lg font-semibold">
-                    {affiliate.fields.discount || 'N/A'}%
-                  </span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Quick Stats */}
-        <div className="space-y-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
-              <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{filteredStats.totalOrders}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Sales</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">${filteredStats.totalSales.toFixed(2)}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Commission</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-1">
-                <div className="text-sm text-muted-foreground">
-                  ${filteredStats.totalSales.toFixed(2)} × {affiliate.fields.share || '0'}%
-                </div>
-                <div className="text-2xl font-bold text-green-600">${filteredStats.totalCommission.toFixed(2)}</div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      {/* Recent Orders */}
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <CardTitle>Recent Orders</CardTitle>
-              <CardDescription>
-                Orders placed using affiliate code "{code}"
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-              <Select value={dateFilter} onValueChange={setDateFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filter by date" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Time</SelectItem>
-                  <SelectItem value="today">Today</SelectItem>
-                  <SelectItem value="last7">Last 7 Days</SelectItem>
-                  <SelectItem value="last30">Last 30 Days</SelectItem>
-                  <SelectItem value="last90">Last 90 Days</SelectItem>
-                  <SelectItem value="week">This Week</SelectItem>
-                  <SelectItem value="month">This Month</SelectItem>
-                  <SelectItem value="year">This Year</SelectItem>
-                  <SelectItem value="january">January</SelectItem>
-                  <SelectItem value="february">February</SelectItem>
-                  <SelectItem value="march">March</SelectItem>
-                  <SelectItem value="april">April</SelectItem>
-                  <SelectItem value="may">May</SelectItem>
-                  <SelectItem value="june">June</SelectItem>
-                  <SelectItem value="july">July</SelectItem>
-                  <SelectItem value="august">August</SelectItem>
-                  <SelectItem value="september">September</SelectItem>
-                  <SelectItem value="october">October</SelectItem>
-                  <SelectItem value="november">November</SelectItem>
-                  <SelectItem value="december">December</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button
-                onClick={downloadReport}
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-2"
-              >
-                <Download className="h-4 w-4" />
-                Download PDF Statement
+    <div className="flex h-screen bg-background">
+      {/* Sidebar for desktop */}
+      <Sidebar />
+      
+      {/* Mobile Sidebar */}
+      <MobileSidebar 
+        isOpen={isMobileSidebarOpen} 
+        onClose={() => setIsMobileSidebarOpen(false)} 
+      />
+      
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Header 
+          onToggleMobileMenu={() => setIsMobileSidebarOpen(true)}
+          title="Affiliate Details"
+        />
+        
+        <main className="flex-1 overflow-y-auto bg-background p-4 md:p-6 space-y-6">
+          {/* Header */}
+          <div className="flex items-center gap-4">
+            <Link href="/affiliates">
+              <Button variant="outline" size="sm">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Affiliates
               </Button>
-            </div>
+            </Link>
           </div>
-        </CardHeader>
-        <CardContent>
-          {orders.length > 0 ? (
-            <div className="space-y-4">
-              {orders.map((order: any) => (
-                <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="space-y-1 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">
-                        {order.fields.firstname} {order.fields.lastname}
-                      </span>
-                      <Badge variant="outline">
-                        {order.fields.status === 'payment_selection' ? 'Ordered' : order.fields.status}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{order.fields.email}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {format(new Date(order.fields.createdat), 'MMM d, yyyy h:mm a')}
+
+          {/* Affiliate Info */}
+          <div className="grid gap-6 lg:grid-cols-3">
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Affiliate Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Name</label>
+                    <p className="text-lg font-semibold">
+                      {affiliate.fields['First Name']} {affiliate.fields['Last Name']}
                     </p>
                   </div>
-                  
-                  <div className="flex-1 px-4">
-                    <div className="text-sm">
-                      <p className="font-medium text-muted-foreground mb-1">Order Items:</p>
-                      <div className="space-y-1">
-                        {(() => {
-                          const cartItems = order.fields.cartitems ? JSON.parse(order.fields.cartitems) : [];
-                          const itemsTotal = cartItems.reduce((sum: number, item: any) => {
-                            const itemPrice = parseFloat(item.product?.price || '0') * item.quantity;
-                            return sum + itemPrice;
-                          }, 0);
-                          const shippingCost = 9.99;
-                          
-                          // Calculate affiliate discount
-                          const affiliateDiscount = parseFloat(affiliate.fields.discount || '0');
-                          const discountAmount = (itemsTotal * affiliateDiscount) / 100;
-                          const subtotalAfterDiscount = itemsTotal - discountAmount;
-                          const calculatedTotal = subtotalAfterDiscount + shippingCost;
-                          
-                          const orderTotal = parseFloat(order.fields.total || '0');
-                          
-                          return (
-                            <>
-                              {cartItems.map((item: any, index: number) => (
-                                <div key={index} className="text-sm flex justify-between items-center">
-                                  <div>
-                                    <span className="font-medium">{item.product?.name || 'Unknown Product'}</span>
-                                    {item.selectedWeight && (
-                                      <span className="text-muted-foreground"> - {item.selectedWeight}</span>
-                                    )}
-                                    <span className="text-muted-foreground"> (Qty: {item.quantity})</span>
-                                  </div>
-                                  <div className="text-right">
-                                    <div className="font-medium">${(parseFloat(item.product?.price || '0') * item.quantity).toFixed(2)}</div>
-                                    <div className="text-xs text-red-600">
-                                      Cost: ${(parseFloat(item.product?.price || '0') * item.quantity * 0.15).toFixed(2)}
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Email</label>
+                    <p className="text-lg break-words">{affiliate.fields.Email}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Affiliate Code</label>
+                    <Badge variant="outline" className="text-lg font-mono">
+                      {affiliate.fields.Code}
+                    </Badge>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Commission Rate</label>
+                    <div className="flex items-center gap-1">
+                      <Percent className="h-4 w-4" />
+                      <span className="text-lg font-semibold">
+                        {affiliate.fields.share || 'N/A'}%
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Customer Discount</label>
+                    <div className="flex items-center gap-1">
+                      <Percent className="h-4 w-4" />
+                      <span className="text-lg font-semibold">
+                        {affiliate.fields.discount || 'N/A'}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Quick Stats */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
+                  <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{filteredStats.totalOrders}</div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Sales</CardTitle>
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">${filteredStats.totalSales.toFixed(2)}</div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Commission</CardTitle>
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-1">
+                    <div className="text-sm text-muted-foreground">
+                      ${filteredStats.totalSales.toFixed(2)} × {affiliate.fields.share || '0'}%
+                    </div>
+                    <div className="text-2xl font-bold text-green-600">${filteredStats.totalCommission.toFixed(2)}</div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+      {/* Recent Orders */}
+          <Card>
+            <CardHeader>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <CardTitle>Recent Orders</CardTitle>
+                  <CardDescription>
+                    Orders placed using affiliate code "{code}"
+                  </CardDescription>
+                </div>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                  <div className="flex items-center gap-2">
+                    <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                    <Select value={dateFilter} onValueChange={setDateFilter}>
+                      <SelectTrigger className="w-full sm:w-[180px]">
+                        <SelectValue placeholder="Filter by date" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Time</SelectItem>
+                        <SelectItem value="today">Today</SelectItem>
+                        <SelectItem value="last7">Last 7 Days</SelectItem>
+                        <SelectItem value="last30">Last 30 Days</SelectItem>
+                        <SelectItem value="last90">Last 90 Days</SelectItem>
+                        <SelectItem value="week">This Week</SelectItem>
+                        <SelectItem value="month">This Month</SelectItem>
+                        <SelectItem value="year">This Year</SelectItem>
+                        <SelectItem value="january">January</SelectItem>
+                        <SelectItem value="february">February</SelectItem>
+                        <SelectItem value="march">March</SelectItem>
+                        <SelectItem value="april">April</SelectItem>
+                        <SelectItem value="may">May</SelectItem>
+                        <SelectItem value="june">June</SelectItem>
+                        <SelectItem value="july">July</SelectItem>
+                        <SelectItem value="august">August</SelectItem>
+                        <SelectItem value="september">September</SelectItem>
+                        <SelectItem value="october">October</SelectItem>
+                        <SelectItem value="november">November</SelectItem>
+                        <SelectItem value="december">December</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button
+                    onClick={downloadReport}
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2 w-full sm:w-auto"
+                  >
+                    <Download className="h-4 w-4" />
+                    <span className="hidden sm:inline">Download PDF Statement</span>
+                    <span className="sm:hidden">Download PDF</span>
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {orders.length > 0 ? (
+                <div className="space-y-4">
+                  {orders.map((order: any) => (
+                    <div key={order.id} className="flex flex-col lg:flex-row lg:items-center lg:justify-between p-4 border rounded-lg space-y-4 lg:space-y-0">
+                      <div className="space-y-1 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium">
+                            {order.fields.firstname} {order.fields.lastname}
+                          </span>
+                          <Badge variant="outline">
+                            {order.fields.status === 'payment_selection' ? 'Ordered' : order.fields.status}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground break-words">{order.fields.email}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(order.fields.createdat), 'MMM d, yyyy h:mm a')}
+                        </p>
+                      </div>
+                      
+                      <div className="flex-1 lg:px-4">
+                        <div className="text-sm">
+                          <p className="font-medium text-muted-foreground mb-1">Order Items:</p>
+                          <div className="space-y-1">
+                            {(() => {
+                              const cartItems = order.fields.cartitems ? JSON.parse(order.fields.cartitems) : [];
+                              const itemsTotal = cartItems.reduce((sum: number, item: any) => {
+                                const itemPrice = parseFloat(item.product?.price || '0') * item.quantity;
+                                return sum + itemPrice;
+                              }, 0);
+                              const shippingCost = 9.99;
+                              
+                              // Calculate affiliate discount
+                              const affiliateDiscount = parseFloat(affiliate.fields.discount || '0');
+                              const discountAmount = (itemsTotal * affiliateDiscount) / 100;
+                              const subtotalAfterDiscount = itemsTotal - discountAmount;
+                              const calculatedTotal = subtotalAfterDiscount + shippingCost;
+                              
+                              const orderTotal = parseFloat(order.fields.total || '0');
+                              
+                              return (
+                                <>
+                                  {cartItems.map((item: any, index: number) => (
+                                    <div key={index} className="text-sm flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-1 sm:space-y-0">
+                                      <div className="flex-1">
+                                        <span className="font-medium">{item.product?.name || 'Unknown Product'}</span>
+                                        {item.selectedWeight && (
+                                          <span className="text-muted-foreground"> - {item.selectedWeight}</span>
+                                        )}
+                                        <span className="text-muted-foreground"> (Qty: {item.quantity})</span>
+                                      </div>
+                                      <div className="text-left sm:text-right">
+                                        <div className="font-medium">${(parseFloat(item.product?.price || '0') * item.quantity).toFixed(2)}</div>
+                                        <div className="text-xs text-red-600">
+                                          Cost: ${(parseFloat(item.product?.price || '0') * item.quantity * 0.15).toFixed(2)}
+                                        </div>
+                                        {item.product?.type && (
+                                          <div className="text-xs text-muted-foreground">
+                                            Type: {item.product.type}
+                                          </div>
+                                        )}
+                                      </div>
                                     </div>
-                                    {item.product?.type && (
-                                      <div className="text-xs text-muted-foreground">
-                                        Type: {item.product.type}
+                                  ))}
+                                  
+                                  {/* Order totals breakdown */}
+                                  <div className="mt-2 pt-2 border-t border-gray-200 text-xs space-y-1">
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Items Total:</span>
+                                      <span>${itemsTotal.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-red-600">
+                                      <span>Total Product Cost (15%):</span>
+                                      <span>${(itemsTotal * 0.15).toFixed(2)}</span>
+                                    </div>
+                                    {affiliateDiscount > 0 && (
+                                      <div className="flex justify-between text-green-600">
+                                        <span>Affiliate Discount ({affiliateDiscount}%):</span>
+                                        <span>-${discountAmount.toFixed(2)}</span>
+                                      </div>
+                                    )}
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Subtotal:</span>
+                                      <span>${subtotalAfterDiscount.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-blue-600">
+                                      <span>Available for Commission (85%):</span>
+                                      <span>${(subtotalAfterDiscount * 0.85).toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Shipping:</span>
+                                      <span>${shippingCost.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between font-medium">
+                                      <span>Calculated Total:</span>
+                                      <span>${calculatedTotal.toFixed(2)}</span>
+                                    </div>
+                                    {Math.abs(orderTotal - calculatedTotal) > 0.01 && (
+                                      <div className="flex justify-between text-orange-600">
+                                        <span>Checkout Total:</span>
+                                        <span>${orderTotal.toFixed(2)}</span>
                                       </div>
                                     )}
                                   </div>
-                                </div>
-                              ))}
-                              
-                              {/* Order totals breakdown */}
-                              <div className="mt-2 pt-2 border-t border-gray-200 text-xs space-y-1">
-                                <div className="flex justify-between">
-                                  <span className="text-muted-foreground">Items Total:</span>
-                                  <span>${itemsTotal.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between text-red-600">
-                                  <span>Total Product Cost (15%):</span>
-                                  <span>${(itemsTotal * 0.15).toFixed(2)}</span>
-                                </div>
-                                {affiliateDiscount > 0 && (
-                                  <div className="flex justify-between text-green-600">
-                                    <span>Affiliate Discount ({affiliateDiscount}%):</span>
-                                    <span>-${discountAmount.toFixed(2)}</span>
-                                  </div>
-                                )}
-                                <div className="flex justify-between">
-                                  <span className="text-muted-foreground">Subtotal:</span>
-                                  <span>${subtotalAfterDiscount.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between text-blue-600">
-                                  <span>Available for Commission (85%):</span>
-                                  <span>${(subtotalAfterDiscount * 0.85).toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span className="text-muted-foreground">Shipping:</span>
-                                  <span>${shippingCost.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between font-medium">
-                                  <span>Calculated Total:</span>
-                                  <span>${calculatedTotal.toFixed(2)}</span>
-                                </div>
-                                {Math.abs(orderTotal - calculatedTotal) > 0.01 && (
-                                  <div className="flex justify-between text-orange-600">
-                                    <span>Checkout Total:</span>
-                                    <span>${orderTotal.toFixed(2)}</span>
-                                  </div>
-                                )}
-                              </div>
-                            </>
-                          );
-                        })()}
+                                </>
+                              );
+                            })()}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-left lg:text-right border-t lg:border-t-0 pt-2 lg:pt-0">
+                        <div className="font-semibold">${parseFloat(order.fields.total || '0').toFixed(2)}</div>
+                        <div className="text-sm text-green-600">
+                          Commission: ${calculateOrderCommission(order).toFixed(2)}
+                        </div>
                       </div>
                     </div>
-                  </div>
-
-                  <div className="text-right">
-                    <div className="font-semibold">${parseFloat(order.fields.total || '0').toFixed(2)}</div>
-                    <div className="text-sm text-green-600">
-                      Commission: ${calculateOrderCommission(order).toFixed(2)}
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <ShoppingCart className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No Orders Found</h3>
-              <p className="text-muted-foreground">
-                No orders have been placed using affiliate code "{code}" yet.
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              ) : (
+                <div className="text-center py-8">
+                  <ShoppingCart className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No Orders Found</h3>
+                  <p className="text-muted-foreground">
+                    No orders have been placed using affiliate code "{code}" yet.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </main>
+      </div>
     </div>
   );
 }

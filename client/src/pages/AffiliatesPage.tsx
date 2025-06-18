@@ -8,9 +8,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Search, Users, DollarSign, ShoppingCart, Eye, Plus } from 'lucide-react';
+import { Search, Users, DollarSign, ShoppingCart, Eye, Plus, Menu } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import Sidebar from '@/components/layout/Sidebar';
+import MobileSidebar from '@/components/layout/MobileSidebar';
+import Header from '@/components/layout/Header';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Link } from 'wouter';
 
 interface AffiliateDetailsModalProps {
@@ -392,6 +395,8 @@ export default function AffiliatesPage() {
   const [status, setStatus] = useState('');
   const [page, setPage] = useState(1);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   const { data, isLoading, error, refetch } = useAffiliates({
     page,
@@ -432,44 +437,85 @@ export default function AffiliatesPage() {
 
   if (error) {
     return (
-      <div className="flex h-screen bg-gray-50">
+      <div className="flex h-screen bg-background">
+        {/* Sidebar for desktop */}
         <Sidebar />
-        <div className="flex-1 flex items-center justify-center">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle className="text-red-600">Error Loading Affiliates</CardTitle>
-              <CardDescription>
-                Unable to load affiliate data. Please check your connection and try again.
-              </CardDescription>
-            </CardHeader>
-          </Card>
+        
+        {/* Mobile Sidebar */}
+        <MobileSidebar 
+          isOpen={isMobileSidebarOpen} 
+          onClose={() => setIsMobileSidebarOpen(false)} 
+        />
+        
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Header 
+            onToggleMobileMenu={() => setIsMobileSidebarOpen(true)}
+            title="Affiliates"
+          />
+          
+          <main className="flex-1 overflow-y-auto bg-background p-4 md:p-6">
+            <Card className="w-full max-w-md mx-auto">
+              <CardHeader>
+                <CardTitle className="text-red-600">Error Loading Affiliates</CardTitle>
+                <CardDescription>
+                  Unable to load affiliate data. Please check your connection and try again.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          </main>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-background">
+      {/* Sidebar for desktop */}
       <Sidebar />
+      
+      {/* Mobile Sidebar */}
+      <MobileSidebar 
+        isOpen={isMobileSidebarOpen} 
+        onClose={() => setIsMobileSidebarOpen(false)} 
+      />
+      
+      {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="bg-white shadow-sm border-b p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Affiliates</h1>
-              <p className="text-gray-600">Manage affiliate accounts and track their performance</p>
+        <Header 
+          onToggleMobileMenu={() => setIsMobileSidebarOpen(true)}
+          title="Affiliates"
+        />
+        
+        <main className="flex-1 overflow-y-auto bg-background p-4 md:p-6">
+          {/* Search and Filter Controls */}
+          <div className="space-y-4 mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold text-foreground">Affiliates</h1>
+                <p className="text-muted-foreground">Manage affiliate accounts and track their performance</p>
+              </div>
+              <Button 
+                onClick={() => setShowAddModal(true)} 
+                className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add New Affiliate
+              </Button>
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input
                   placeholder="Search by name, email, or code..."
                   value={search}
                   onChange={(e) => handleSearch(e.target.value)}
-                  className="pl-10 w-64"
+                  className="pl-10"
                 />
               </div>
               <Select value={status || 'all'} onValueChange={handleStatusFilter}>
-                <SelectTrigger className="w-40">
+                <SelectTrigger className="w-full sm:w-40">
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -478,47 +524,86 @@ export default function AffiliatesPage() {
                   <SelectItem value="inactive">Inactive</SelectItem>
                 </SelectContent>
               </Select>
-              <Button onClick={() => setShowAddModal(true)} className="bg-blue-600 hover:bg-blue-700">
-                <Plus className="h-4 w-4 mr-2" />
-                Add New Affiliate
-              </Button>
             </div>
           </div>
-        </div>
 
-        <div className="flex-1 overflow-auto p-6">
-          <div className="space-y-6">
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Affiliates</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{pagination?.total || 0}</div>
-                  <p className="text-xs text-muted-foreground">Active affiliate accounts</p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Affiliates Table */}
+        {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <Card>
-              <CardHeader>
-                <CardTitle>Affiliate Accounts</CardTitle>
-                <CardDescription>
-                  Search and manage your affiliate partners
-                </CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Affiliates</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                {isLoading ? (
-                  <div className="text-center py-8">Loading affiliates...</div>
-                ) : affiliates.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    {search ? 'No affiliates found matching your search.' : 'No affiliates found.'}
+                <div className="text-2xl font-bold">{pagination?.total || 0}</div>
+                <p className="text-xs text-muted-foreground">Active affiliate accounts</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Affiliates Table/Cards */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Affiliate Accounts</CardTitle>
+              <CardDescription>
+                Search and manage your affiliate partners
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="text-center py-8">Loading affiliates...</div>
+              ) : affiliates.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  {search ? 'No affiliates found matching your search.' : 'No affiliates found.'}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Mobile Cards View */}
+                  <div className="block md:hidden space-y-4">
+                    {affiliates.map((affiliate) => (
+                      <Card key={affiliate.id} className="p-4">
+                        <div className="space-y-3">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <p className="font-medium text-sm">
+                                {affiliate.fields['First Name']} {affiliate.fields['Last Name']}
+                              </p>
+                              <p className="text-xs text-muted-foreground">{affiliate.fields.Email}</p>
+                            </div>
+                            <Badge 
+                              variant={affiliate.fields.status === 'Active' ? 'default' : 'secondary'}
+                              className={affiliate.fields.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}
+                            >
+                              {affiliate.fields.status || 'Inactive'}
+                            </Badge>
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-xs text-muted-foreground">Code</p>
+                              <Badge variant="outline" className="font-mono text-xs">
+                                {affiliate.fields.Code}
+                              </Badge>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-xs text-muted-foreground">Joined</p>
+                              <p className="text-xs">{formatDate(new Date(affiliate.createdTime))}</p>
+                            </div>
+                          </div>
+                          
+                          <Link href={`/affiliates/${affiliate.fields.Code}`}>
+                            <Button variant="outline" size="sm" className="w-full">
+                              <Eye className="h-4 w-4 mr-2" />
+                              View Details
+                            </Button>
+                          </Link>
+                        </div>
+                      </Card>
+                    ))}
                   </div>
-                ) : (
-                  <div className="space-y-4">
+
+                  {/* Desktop Table View */}
+                  <div className="hidden md:block">
                     <div className="rounded-md border">
                       <Table>
                         <TableHeader>
@@ -571,44 +656,44 @@ export default function AffiliatesPage() {
                         </TableBody>
                       </Table>
                     </div>
-
-                    {/* Pagination */}
-                    {pagination && pagination.total > pagination.limit && (
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm text-muted-foreground">
-                          Showing {((page - 1) * pagination.limit) + 1} to{' '}
-                          {Math.min(page * pagination.limit, pagination.total)} of{' '}
-                          {pagination.total} affiliates
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setPage(Math.max(1, page - 1))}
-                            disabled={page === 1}
-                          >
-                            Previous
-                          </Button>
-                          <span className="text-sm text-muted-foreground">
-                            Page {page} of {Math.ceil(pagination.total / pagination.limit)}
-                          </span>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setPage(page + 1)}
-                            disabled={page >= Math.ceil(pagination.total / pagination.limit)}
-                          >
-                            Next
-                          </Button>
-                        </div>
-                      </div>
-                    )}
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+
+                  {/* Pagination */}
+                  {pagination && pagination.total > pagination.limit && (
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4">
+                      <div className="text-sm text-muted-foreground">
+                        Showing {((page - 1) * pagination.limit) + 1} to{' '}
+                        {Math.min(page * pagination.limit, pagination.total)} of{' '}
+                        {pagination.total} affiliates
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setPage(Math.max(1, page - 1))}
+                          disabled={page === 1}
+                        >
+                          Previous
+                        </Button>
+                        <span className="text-sm text-muted-foreground">
+                          Page {page} of {Math.ceil(pagination.total / pagination.limit)}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setPage(page + 1)}
+                          disabled={page >= Math.ceil(pagination.total / pagination.limit)}
+                        >
+                          Next
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </main>
       </div>
 
       <AddAffiliateModal

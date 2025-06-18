@@ -30,6 +30,7 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
     { icon: ShoppingCart, label: "Orders", path: "/orders" },
     { icon: Package, label: "Products", path: "/products" },
     { icon: Users, label: "Customers", path: "/customers" },
+    { icon: Users, label: "Affiliates", path: "/affiliates" },
     { icon: Settings, label: "Settings", path: "/settings" },
   ];
 
