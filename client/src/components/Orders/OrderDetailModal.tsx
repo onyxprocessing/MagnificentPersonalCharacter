@@ -411,6 +411,14 @@ export default function OrderDetailModal({
                   <p className="text-sm">
                     <span className="text-gray-500">Phone:</span> {order.phone || 'Not provided'}
                   </p>
+                  {order.affiliateCode && (
+                    <p className="text-sm">
+                      <span className="text-gray-500">Affiliate Code:</span> 
+                      <span className="ml-1 px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-mono">
+                        {order.affiliateCode}
+                      </span>
+                    </p>
+                  )}
                 </div>
               </div>
               
