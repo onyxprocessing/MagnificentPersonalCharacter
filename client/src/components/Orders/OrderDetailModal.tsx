@@ -306,8 +306,6 @@ export default function OrderDetailModal({
         if (res.ok) {
           onUpdateStatus(order.id, 'cancelled');
           onClose(); // Close the modal
-          // Force a page refresh to update the order list
-          window.location.reload();
         }
       } catch (error) {
         console.error('Error canceling order:', error);
