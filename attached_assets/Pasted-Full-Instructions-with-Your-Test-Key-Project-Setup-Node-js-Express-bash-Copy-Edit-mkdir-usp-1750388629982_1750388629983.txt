@@ -1,0 +1,109 @@
+Full Instructions (with Your Test Key)
+🧱 Project Setup (Node.js + Express)
+bash
+Copy
+Edit
+mkdir usps-labels
+cd usps-labels
+npm init -y
+npm install express @easypost/api
+📄 index.js – Express Server to Generate Label
+js
+Copy
+Edit
+const express = require('express');
+const EasyPost = require('@easypost/api');
+const cors = require('cors');
+
+const api = new EasyPost('EZTK447d7d7dc214400d8697559657869e65aOkLdIKBolsqhUaT3weymQ'); // your test key
+
+const app = express();
+app.use(express.json());
+app.use(cors());
+
+app.post('/generate-label', async (req, res) => {
+  try {
+    const toAddress = await api.Address.create({
+      name: 'Jack Spicer',
+      street1: '123 Main St',
+      city: 'Nashville',
+      state: 'TN',
+      zip: '37209',
+      country: 'US',
+      phone: '5555555555',
+    });
+
+    const fromAddress = await api.Address.create({
+      name: 'True Aminos',
+      street1: '456 Warehouse Blvd',
+      city: 'Franklin',
+      state: 'TN',
+      zip: '37064',
+      country: 'US',
+      phone: '5551234567',
+    });
+
+    const parcel = await api.Parcel.create({
+      length: 6,
+      width: 4,
+      height: 2,
+      weight: 16, // in ounces (1 lb)
+    });
+
+    const shipment = await api.Shipment.create({
+      to_address: toAddress,
+      from_address: fromAddress,
+      parcel: parcel,
+      service: 'Priority',
+      carrier: 'USPS',
+      options: { label_format: 'PDF' },
+    });
+
+    const bought = await shipment.buy(shipment.lowestRate());
+
+    res.json({ labelUrl: bought.postage_label.label_url });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Label generation failed.' });
+  }
+});
+
+app.listen(3000, () => {
+  console.log('✅ Server running on http://localhost:3000');
+});
+🚀 Start Your Server
+bash
+Copy
+Edit
+node index.js
+🖱️ Frontend Example (React or Plain JS)
+js
+Copy
+Edit
+const generateLabel = async () => {
+  const res = await fetch('http://localhost:3000/generate-label', {
+    method: 'POST',
+  });
+  const data = await res.json();
+  window.open(data.labelUrl, '_blank'); // Open USPS PDF label
+};
+✅ What It Does
+POST /generate-label
+
+Uses your EasyPost test key
+
+Generates a USPS Priority label
+
+Returns a PDF link to open/download
+
+Let me know if you want to:
+
+Dynamically pass toAddress from your frontend
+
+Change package dimensions
+
+Save the label file
+
+Deploy this backend to EC2 or another server
+
+I can also give you a production version when you're ready.
