@@ -39,10 +39,10 @@ export default function OrderFulfillmentModal({
   const [tracking, setTracking] = useState<string>('');
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [isCreatingLabel, setIsCreatingLabel] = useState(false);
-  const [serviceType, setServiceType] = useState<'GROUND_ADVANTAGE' | 'PRIORITY' | 'PRIORITY_EXPRESS'>('GROUND_ADVANTAGE');
+  const [serviceType, setServiceType] = useState<'Ground' | 'Priority' | 'Express'>('Ground');
   const [labelData, setLabelData] = useState<{
     trackingNumber: string;
-    labelImage: string;
+    labelUrl: string;
     postage: number;
   } | null>(null);
 
@@ -139,38 +139,30 @@ export default function OrderFulfillmentModal({
     if (!order) return;
 
     setIsCreatingLabel(true);
-
     try {
       const response = await fetch(`/api/orders/${order.id}/create-shipping-label`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ serviceType })
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const result = await response.json();
         setLabelData({
-          trackingNumber: data.data.trackingNumber,
-          labelImage: data.data.labelImage,
-          postage: data.data.postage
+          trackingNumber: result.data.trackingNumber,
+          labelUrl: result.data.labelUrl,
+          postage: result.data.postage
         });
-        setTracking(data.data.trackingNumber);
-
-        // Refresh order data
-        // if (onOrderUpdate) {
-        //   onOrderUpdate(order.id);
-        // }
-
-        alert(`Shipping label created successfully! Tracking: ${data.data.trackingNumber}`);
+        setTracking(result.data.trackingNumber);
+        autoSaveOrder(order.id, { tracking: result.data.trackingNumber });
       } else {
         const errorData = await response.json();
-        alert(errorData.message || 'Failed to create shipping label');
+        console.error('Failed to create shipping label:', errorData.message);
+        alert(`Failed to create shipping label: ${errorData.message}`);
       }
     } catch (error) {
       console.error('Error creating shipping label:', error);
-      alert('Failed to create shipping label. Please check your USPS API configuration.');
+      alert('Error creating shipping label. Please try again.');
     } finally {
       setIsCreatingLabel(false);
     }
@@ -178,52 +170,16 @@ export default function OrderFulfillmentModal({
 
   const downloadLabel = () => {
     if (!labelData) return;
-
-    try {
-      const byteCharacters = atob(labelData.labelImage);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: 'application/pdf' });
-
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `shipping-label-${labelData.trackingNumber}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error downloading label:', error);
-      alert('Failed to download shipping label');
-    }
+    window.open(labelData.labelUrl, '_blank');
   };
 
   const printLabel = () => {
     if (!labelData) return;
-
-    try {
-      const byteCharacters = atob(labelData.labelImage);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: 'application/pdf' });
-
-      const url = window.URL.createObjectURL(blob);
-      const printWindow = window.open(url);
-      if (printWindow) {
-        printWindow.addEventListener('load', () => {
-          printWindow.print();
-        });
-      }
-    } catch (error) {
-      console.error('Error printing label:', error);
-      alert('Failed to print shipping label');
+    const printWindow = window.open(labelData.labelUrl, '_blank');
+    if (printWindow) {
+      printWindow.onload = () => {
+        printWindow.print();
+      };
     }
   };
 
@@ -312,14 +268,14 @@ export default function OrderFulfillmentModal({
           <div className="space-y-2">
             <Label className="text-sm font-medium">Create Shipping Label</Label>
             <div className="flex items-center space-x-4">
-              <Select value={serviceType} onValueChange={(value) => setServiceType(value as 'GROUND_ADVANTAGE' | 'PRIORITY' | 'PRIORITY_EXPRESS')}>
+              <Select value={serviceType} onValueChange={(value: 'Ground' | 'Priority' | 'Express') => setServiceType(value)}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Select service" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="GROUND_ADVANTAGE">Ground Advantage</SelectItem>
-                  <SelectItem value="PRIORITY">Priority Mail</SelectItem>
-                  <SelectItem value="PRIORITY_EXPRESS">Priority Mail Express</SelectItem>
+                  <SelectItem value="Ground">USPS Ground Advantage</SelectItem>
+                  <SelectItem value="Priority">USPS Priority Mail</SelectItem>
+                  <SelectItem value="Express">USPS Priority Express</SelectItem>
                 </SelectContent>
               </Select>
               <Button

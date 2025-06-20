@@ -803,11 +803,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // USPS shipping routes
+  // EasyPost shipping routes
   app.post('/api/orders/:id/create-shipping-label', async (req, res) => {
     try {
       const { id } = req.params;
-      const { serviceType = 'GROUND_ADVANTAGE' } = req.body;
+      const { serviceType = 'Priority' } = req.body;
       
       const order = await storage.getOrderById(id);
       if (!order) {
@@ -817,7 +817,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const { uspsService } = await import('./usps');
+      const { easyPostService } = await import('./easypost');
       
       // Parse cart items to determine package specs
       const cartItems = order.cartItems && Array.isArray(order.cartItems) 
@@ -825,7 +825,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         : (order.cartitems ? JSON.parse(order.cartitems) : []);
       
       const itemCount = cartItems.reduce((total: number, item: any) => total + (item.quantity || 1), 0);
-      const packageSpecs = uspsService.getPackageSpecs(itemCount);
+      const packageSpecs = easyPostService.getPackageSpecs(itemCount);
       
       const toAddress = {
         name: `${order.firstname} ${order.lastname}`,
@@ -836,10 +836,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         phone: order.phone || ''
       };
 
-      const fromAddress = uspsService.getDefaultFromAddress();
+      const fromAddress = easyPostService.getDefaultFromAddress();
       
       // Validate customer address first
-      const addressValid = await uspsService.validateAddress(toAddress);
+      const addressValid = await easyPostService.validateAddress(toAddress);
       if (!addressValid) {
         return res.status(400).json({
           success: false,
@@ -850,14 +850,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const labelRequest = {
         toAddress,
         fromAddress,
-        packageType: packageSpecs.packageType,
-        serviceType: serviceType as 'GROUND_ADVANTAGE' | 'PRIORITY' | 'PRIORITY_EXPRESS',
-        weight: packageSpecs.weight
+        serviceType: serviceType as 'Ground' | 'Priority' | 'Express',
+        weight: packageSpecs.weight,
+        length: packageSpecs.length,
+        width: packageSpecs.width,
+        height: packageSpecs.height
       };
 
-      const labelResponse = await uspsService.createShippingLabel(labelRequest);
+      const labelResponse = await easyPostService.createShippingLabel(labelRequest);
       
-      // Update order with tracking number
+      // Update order with tracking number and shipping info
       await storage.updateOrder(id, {
         trackingNumber: labelResponse.trackingNumber,
         shippingCost: labelResponse.postage,
@@ -869,9 +871,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: true,
         data: {
           trackingNumber: labelResponse.trackingNumber,
-          labelImage: labelResponse.labelImage,
+          labelUrl: labelResponse.labelUrl,
           postage: labelResponse.postage,
-          zone: labelResponse.zone
+          carrier: labelResponse.carrier
         }
       });
     } catch (error) {
@@ -895,8 +897,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const { uspsService } = await import('./usps');
-      const trackingInfo = await uspsService.getTrackingInfo(order.trackingNumber);
+      const { easyPostService } = await import('./easypost');
+      const trackingInfo = await easyPostService.getTrackingInfo(order.trackingNumber);
       
       res.json({
         success: true,
@@ -914,9 +916,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/validate-address', async (req, res) => {
     try {
       const { address } = req.body;
-      const { uspsService } = await import('./usps');
+      const { easyPostService } = await import('./easypost');
       
-      const isValid = await uspsService.validateAddress(address);
+      const isValid = await easyPostService.validateAddress(address);
       
       res.json({
         success: true,
