@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Download, Ban, Check, CreditCard, Mail, Truck, Package } from "lucide-react";
+import { Download, Ban, Check, CreditCard, Mail, Truck, Package, PrinterIcon } from "lucide-react";
 import { Order } from "@shared/schema";
 import { format } from "date-fns";
 import { useEffect, useState, useCallback } from "react";
@@ -16,6 +16,7 @@ import PayWithStripeButton from "./PayWithStripeButton";
 import PartialFulfillmentModal from "./PartialFulfillmentModal";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface OrderDetailModalProps {
   isOpen: boolean;
@@ -28,14 +29,14 @@ interface OrderDetailModalProps {
 // Get the correct price based on the selected weight
 const getItemPrice = (item: any) => {
   if (!item || !item.product) return 0;
-  
+
   // Get the selected weight from the item
   const selectedWeight = item.selectedWeight;
   if (!selectedWeight) return parseFloat(item.product.price || '0');
-  
+
   // Convert weight to a valid property name (e.g., "10mg" -> "price10mg")
   const priceField = `price${selectedWeight}`;
-  
+
   // Get the price for the selected weight
   const price = item.product[priceField];
   return price ? parseFloat(price) : 0;
@@ -68,13 +69,13 @@ export default function OrderDetailModal({
   // Function to fetch payment status from Stripe
   const fetchPaymentStatus = async () => {
     if (!order || !order.id) return;
-    
+
     setPaymentStatus(prev => ({ ...prev, loading: true }));
-    
+
     try {
       const res = await apiRequest('GET', `/api/orders/${order.id}/payment-status`);
       const data = await res.json();
-      
+
       if (data.success) {
         setPaymentStatus({
           loading: false,
@@ -101,7 +102,7 @@ export default function OrderDetailModal({
       });
     }
   };
-  
+
   // State for tracking order fulfillment process
   const [completingOrder, setCompletingOrder] = useState(false);
   const [sendingEmail, setSendingEmail] = useState<{
@@ -113,11 +114,20 @@ export default function OrderDetailModal({
   });
   const [partialFulfillmentModalOpen, setPartialFulfillmentModalOpen] = useState(false);
   const [markingShipped, setMarkingShipped] = useState(false);
-  
+
   // Notes state and auto-save functionality
   const [notes, setNotes] = useState(order?.notes || '');
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null);
+
+  // Shipping Label
+  const [isCreatingLabel, setIsCreatingLabel] = useState(false);
+  const [serviceType, setServiceType] = useState<'Ground' | 'Priority' | 'Express'>('Ground');
+  const [labelData, setLabelData] = useState<{
+    trackingNumber: string;
+    labelUrl: string;
+    postage: number;
+  } | null>(null);
 
   // Log the order object for debugging
   useEffect(() => {
@@ -146,13 +156,13 @@ export default function OrderDetailModal({
   // Auto-save notes functionality
   const saveNotes = useCallback(async (notesText: string) => {
     if (!order || !order.id) return;
-    
+
     setIsAutoSaving(true);
     try {
       const res = await apiRequest('PATCH', `/api/orders/${order.id}`, {
         notes: notesText
       });
-      
+
       if (res.ok) {
         console.log('Notes saved successfully');
       } else {
@@ -167,17 +177,17 @@ export default function OrderDetailModal({
 
   const handleNotesChange = useCallback((value: string) => {
     setNotes(value);
-    
+
     // Clear existing timeout
     if (saveTimeout) {
       clearTimeout(saveTimeout);
     }
-    
+
     // Set new timeout for auto-save (debounce for 1 second)
     const timeout = setTimeout(() => {
       saveNotes(value);
     }, 1000);
-    
+
     setSaveTimeout(timeout);
   }, [saveTimeout, saveNotes]);
 
@@ -191,7 +201,7 @@ export default function OrderDetailModal({
   }, [saveTimeout]);
 
   if (!isOpen) return null;
-  
+
   const formatDate = (dateString: Date | string, includeTime = false) => {
     try {
       const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
@@ -200,61 +210,44 @@ export default function OrderDetailModal({
       return 'Invalid date';
     }
   };
-  
+
   const getOrderTotal = (order: Order) => {
     if (order.total) return parseFloat(order.total);
-    
+
     if (!order.cartItems || !Array.isArray(order.cartItems)) return 0;
-    
+
     return order.cartItems.reduce((sum, item) => {
       const price = getItemPrice(item);
       const quantity = item.quantity || 1;
       return sum + (price * quantity);
     }, 0);
   };
-  
+
   const getSubtotal = (order: Order) => {
     if (!order.cartItems || !Array.isArray(order.cartItems)) return 0;
-    
+
     return order.cartItems.reduce((sum, item) => {
       const price = getItemPrice(item);
       const quantity = item.quantity || 1;
       return sum + (price * quantity);
     }, 0);
   };
-  
+
   const getShippingCost = () => {
     // Assuming $9.99 shipping cost for simplicity
     return 9.99;
   };
-  
-  // Get the correct price based on the selected weight
-  const getItemPrice = (item: any) => {
-    if (!item || !item.product) return 0;
-    
-    // Get the selected weight from the item
-    const selectedWeight = item.selectedWeight;
-    if (!selectedWeight) return parseFloat(item.product.price || '0');
-    
-    // Convert weight to a valid property name (e.g., "10mg" -> "price10mg")
-    const priceField = `price${selectedWeight}`;
-    
-    // Get the price for the selected weight
-    const price = item.product[priceField];
-    return price ? parseFloat(price) : 0;
-  };
-  
-  // Handle marking an order as completed/fulfilled  
+
   const handleMarkAsComplete = async () => {
     if (!order) return;
-    
+
     setCompletingOrder(true);
     try {
       // Update the order's completed field in Airtable
       const res = await apiRequest('PATCH', `/api/orders/${order.id}`, {
         completed: true
       });
-      
+
       if (res.ok) {
         // If successful, notify the parent component that the status has changed
         onUpdateStatus(order.id, order.status);
@@ -268,17 +261,17 @@ export default function OrderDetailModal({
       setCompletingOrder(false);
     }
   };
-  
+
   // Handle marking an order as shipped
   const handleMarkAsShipped = async () => {
     if (!order) return;
-    
+
     setMarkingShipped(true);
     try {
       const res = await apiRequest('PATCH', `/api/orders/${order.id}`, {
         shipped: true
       });
-      
+
       if (res.ok) {
         // If successful, notify the parent component that the order has been updated
         onUpdateStatus(order.id, order.status || '');
@@ -293,16 +286,64 @@ export default function OrderDetailModal({
     }
   };
 
+  const createShippingLabel = async () => {
+    if (!order) return;
+
+    setIsCreatingLabel(true);
+    try {
+      const res = await apiRequest('POST', `/api/orders/${order.id}/create-shipping-label`, {
+        serviceType: serviceType
+      });
+
+      if (res.ok) {
+        const result = await res.json();
+        setLabelData({
+          trackingNumber: result.data.trackingNumber,
+          labelUrl: result.data.labelUrl,
+          postage: result.data.postage
+        });
+
+        // Update the order with the tracking number
+        const updatedOrder = { ...order, tracking: result.data.trackingNumber };
+        onUpdateStatus(updatedOrder.id, updatedOrder.status || '');
+      } else {
+        const errorData = await res.json();
+        console.error('Failed to create shipping label:', errorData.message);
+        alert(`Failed to create shipping label: ${errorData.message}`);
+      }
+    } catch (error) {
+      console.error('Error creating shipping label:', error);
+      alert('Error creating shipping label. Please try again.');
+    } finally {
+      setIsCreatingLabel(false);
+    }
+  };
+
+  const downloadLabel = () => {
+    if (!labelData) return;
+    window.open(labelData.labelUrl, '_blank');
+  };
+
+  const printLabel = () => {
+    if (!labelData) return;
+    const printWindow = window.open(labelData.labelUrl, '_blank');
+    if (printWindow) {
+      printWindow.onload = () => {
+        printWindow.print();
+      };
+    }
+  };
+
   // Handle canceling an order
   const handleCancelOrder = async () => {
     if (!order) return;
-    
+
     if (window.confirm('Are you sure you want to cancel this order?')) {
       try {
         const res = await apiRequest('PATCH', `/api/orders/${order.id}`, {
           status: 'cancelled'
         });
-        
+
         if (res.ok) {
           onUpdateStatus(order.id, 'cancelled');
           onClose(); // Close the modal
@@ -316,18 +357,18 @@ export default function OrderDetailModal({
   // Handle sending confirmation email
   const handleSendConfirmationEmail = async () => {
     if (!order) return;
-    
+
     // If email already sent, show confirmation dialog
     if (order.confirmationEmailSent) {
       const confirmResend = window.confirm('A confirmation email has already been sent. Do you want to send it again?');
       if (!confirmResend) return;
     }
-    
+
     setSendingEmail(prev => ({ ...prev, confirmation: true }));
-    
+
     try {
       const res = await apiRequest('POST', `/api/orders/${order.id}/send-confirmation`, {});
-      
+
       if (res.ok) {
         const data = await res.json();
         alert(data.message || 'Confirmation email sent successfully!');
@@ -348,18 +389,18 @@ export default function OrderDetailModal({
   // Handle sending shipping notification email
   const handleSendShippingEmail = async () => {
     if (!order) return;
-    
+
     // If email already sent, show confirmation dialog
     if (order.shippingEmailSent) {
       const confirmResend = window.confirm('A shipping notification has already been sent. Do you want to send it again?');
       if (!confirmResend) return;
     }
-    
+
     setSendingEmail(prev => ({ ...prev, shipping: true }));
-    
+
     try {
       const res = await apiRequest('POST', `/api/orders/${order.id}/send-shipping`, {});
-      
+
       if (res.ok) {
         const data = await res.json();
         alert(data.message || 'Shipping notification sent successfully!');
@@ -385,7 +426,7 @@ export default function OrderDetailModal({
             Order Details - <span className="text-primary">{order?.checkoutId}</span>
           </DialogTitle>
         </DialogHeader>
-        
+
         {loading || !order ? (
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -421,7 +462,7 @@ export default function OrderDetailModal({
                   )}
                 </div>
               </div>
-              
+
               <div className="bg-gray-50 p-4 rounded-lg">
                 <h3 className="font-medium text-gray-900 mb-3">Shipping Information</h3>
                 <div className="space-y-2">
@@ -455,7 +496,57 @@ export default function OrderDetailModal({
                 </div>
               </div>
             </div>
-            
+
+            {/* Shipping Label Creation */}
+            <div className="space-y-4">
+              <h3 className="font-medium text-gray-900 mb-3">Shipping Label</h3>
+
+              {!labelData && (
+                <div className="space-y-3 p-4 border border-blue-200 rounded-lg bg-blue-50">
+                  <div className="flex items-center space-x-4">
+                    <Select value={serviceType} onValueChange={(value: 'Ground' | 'Priority' | 'Express') => setServiceType(value)}>
+                      <SelectTrigger className="w-[200px]">
+                        <SelectValue placeholder="Select service" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Ground">USPS Ground Advantage</SelectItem>
+                        <SelectItem value="Priority">USPS Priority Mail</SelectItem>
+                        <SelectItem value="Express">USPS Priority Express</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      onClick={createShippingLabel}
+                      disabled={isCreatingLabel}
+                      className="bg-blue-600 text-white hover:bg-blue-700"
+                    >
+                      <Truck className="w-4 h-4 mr-2" />
+                      {isCreatingLabel ? "Creating Label..." : "Generate Label"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {labelData && (
+                <div className="space-y-3 p-4 border border-green-200 rounded-lg bg-green-50">
+                  <div className="flex items-center space-x-2 mb-3">
+                    <Check className="w-5 h-5 text-green-600" />
+                    <span className="text-lg font-semibold text-green-800">Label Created Successfully!</span>
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    <Button onClick={downloadLabel} className="bg-green-600 text-white hover:bg-green-700">
+                      <Download className="mr-2 h-4 w-4" />
+                      Download Label
+                    </Button>
+                    <Button onClick={printLabel} className="bg-purple-600 text-white hover:bg-purple-700">
+                      <PrinterIcon className="mr-2 h-4 w-4" />
+                      Print Label
+                    </Button>
+                    <div className="text-lg font-semibold text-green-700">Postage: ${labelData.postage}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Order Items */}
             <div>
               <h3 className="font-medium text-gray-900 mb-3">Order Items</h3>
@@ -484,7 +575,7 @@ export default function OrderDetailModal({
                         const fulfillmentStatus = getFulfillmentStatus();
                         const isFullyFulfilled = fulfillmentStatus.fulfilled === fulfillmentStatus.total;
                         const isPartiallyFulfilled = fulfillmentStatus.fulfilled > 0 && fulfillmentStatus.fulfilled < fulfillmentStatus.total;
-                        
+
                         // Determine text color based on fulfillment status
                         let productNameColor = "text-gray-700"; // Default unfulfilled
                         if (isFullyFulfilled) {
@@ -546,7 +637,7 @@ export default function OrderDetailModal({
                 </table>
               </div>
             </div>
-            
+
             {/* Payment Verification Status */}
             {order.status === 'payment_selection' && (
               <div>
@@ -570,7 +661,7 @@ export default function OrderDetailModal({
                       </div>
                       <div className="ml-11">
                         <p className="text-sm text-green-600 font-medium mb-2">{paymentStatus.message || 'Payment was successfully verified'}</p>
-                        
+
                         {paymentStatus.paymentDetails && (
                           <div className="text-sm text-gray-600 space-y-1 pt-2 border-t border-gray-200">
                             <p><span className="font-medium">Amount:</span> ${paymentStatus.paymentDetails.amount?.toFixed(2)}</p>
@@ -607,7 +698,7 @@ export default function OrderDetailModal({
                 </div>
               </div>
             )}
-            
+
             {/* Email Notifications */}
             {order.email && (
               <div>
@@ -661,7 +752,7 @@ export default function OrderDetailModal({
                       <p className="text-xs text-gray-500">{formatDate(order.createdAt, true)}</p>
                     </div>
                   </div>
-                  
+
                   {order.status === 'personal_info' || order.status === 'shipping_info' || order.status === 'payment_selection' || order.status === 'completed' ? (
                     <div className="flex">
                       <div className="flex flex-col items-center mr-4">
@@ -674,7 +765,7 @@ export default function OrderDetailModal({
                       </div>
                     </div>
                   ) : null}
-                  
+
                   {order.status === 'shipping_info' || order.status === 'payment_selection' || order.status === 'completed' ? (
                     <div className="flex">
                       <div className="flex flex-col items-center mr-4">
@@ -687,7 +778,7 @@ export default function OrderDetailModal({
                       </div>
                     </div>
                   ) : null}
-                  
+
                   {order.status === 'payment_selection' || order.status === 'completed' ? (
                     <div className="flex">
                       <div className="flex flex-col items-center mr-4">
@@ -700,7 +791,7 @@ export default function OrderDetailModal({
                       </div>
                     </div>
                   ) : null}
-                  
+
                   {order.status === 'completed' ? (
                     <div className="flex">
                       <div className="flex flex-col items-center mr-4">
@@ -741,7 +832,7 @@ export default function OrderDetailModal({
             </div>
           </div>
         )}
-        
+
         <DialogFooter className="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-3 border-t border-gray-200 pt-4">
           <div className="flex space-x-3">
             <Button variant="outline" className="flex items-center">
@@ -758,6 +849,14 @@ export default function OrderDetailModal({
               {markingShipped ? 'Marking...' : 'Mark as Shipped'}
               {order?.shipped && <span className="ml-2 text-green-600">✓</span>}
             </Button>
+             <Button
+                onClick={createShippingLabel}
+                disabled={isCreatingLabel}
+                className="bg-blue-600 text-white hover:bg-blue-700 flex items-center"
+              >
+                <PrinterIcon className="w-4 h-4 mr-2" />
+                {isCreatingLabel ? "Creating Label..." : "Generate Label"}
+              </Button>
           </div>
           <div className="flex space-x-3">
             {/* Show Pay with Stripe button for orders in payment selection status that haven't been verified yet */}
@@ -788,7 +887,7 @@ export default function OrderDetailModal({
           </div>
         </DialogFooter>
       </DialogContent>
-      
+
       {/* Partial Fulfillment Modal */}
       <PartialFulfillmentModal
         isOpen={partialFulfillmentModalOpen}
