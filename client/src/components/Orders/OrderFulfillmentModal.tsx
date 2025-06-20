@@ -265,11 +265,14 @@ export default function OrderFulfillmentModal({
           <Separator />
 
           {/* Shipping Label Creation */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">Create Shipping Label</Label>
+          <div className="space-y-3 p-4 border border-blue-200 rounded-lg bg-blue-50">
+            <div className="flex items-center space-x-2">
+              <Truck className="w-5 h-5 text-blue-600" />
+              <Label className="text-lg font-semibold text-blue-800">Create Shipping Label</Label>
+            </div>
             <div className="flex items-center space-x-4">
               <Select value={serviceType} onValueChange={(value: 'Ground' | 'Priority' | 'Express') => setServiceType(value)}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-[200px]">
                   <SelectValue placeholder="Select service" />
                 </SelectTrigger>
                 <SelectContent>
@@ -281,26 +284,31 @@ export default function OrderFulfillmentModal({
               <Button
                 onClick={createShippingLabel}
                 disabled={isCreatingLabel}
-                className="bg-blue-500 text-white hover:bg-blue-700"
+                className="bg-blue-600 text-white hover:bg-blue-700 px-6 py-2"
+                size="lg"
               >
-                {isCreatingLabel ? "Creating..." : "Create Label"}
+                <Truck className="w-4 h-4 mr-2" />
+                {isCreatingLabel ? "Creating Label..." : "Create Shipping Label"}
               </Button>
             </div>
           </div>
 
           {labelData && (
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Shipping Label Actions</Label>
+            <div className="space-y-3 p-4 border border-green-200 rounded-lg bg-green-50">
+              <div className="flex items-center space-x-2">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+                <Label className="text-lg font-semibold text-green-800">Label Created Successfully!</Label>
+              </div>
               <div className="flex items-center space-x-4">
-                <Button onClick={downloadLabel} className="bg-green-500 text-white hover:bg-green-700">
+                <Button onClick={downloadLabel} className="bg-green-600 text-white hover:bg-green-700" size="lg">
                   <Download className="mr-2 h-4 w-4" />
                   Download Label
                 </Button>
-                <Button onClick={printLabel} className="bg-purple-500 text-white hover:bg-purple-700">
+                <Button onClick={printLabel} className="bg-purple-600 text-white hover:bg-purple-700" size="lg">
                   <PrinterIcon className="mr-2 h-4 w-4" />
                   Print Label
                 </Button>
-                <div>Postage: ${labelData.postage}</div>
+                <div className="text-lg font-semibold text-green-700">Postage: ${labelData.postage}</div>
               </div>
             </div>
           )}
