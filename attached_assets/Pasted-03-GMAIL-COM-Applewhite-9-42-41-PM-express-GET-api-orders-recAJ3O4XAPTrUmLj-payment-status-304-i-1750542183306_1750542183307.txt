@@ -1,0 +1,127 @@
+03@GMAIL.COM Applewhite
+9:42:41 PM [express] GET /api/orders/recAJ3O4XAPTrUmLj/payment-status 304 in 2354ms :: {"success":tr…
+Available rates: [
+  Y {
+    id: 'rate_95e4e38b380042ca9a5fb8e657b87abc',
+    object: 'Rate',
+    created_at: '2025-06-21T21:42:45Z',
+    updated_at: '2025-06-21T21:42:45Z',
+    mode: 'test',
+    service: 'Express',
+    carrier: 'USPS',
+    rate: '29.90',
+    currency: 'USD',
+    retail_rate: '34.10',
+    retail_currency: 'USD',
+    list_rate: '29.90',
+    list_currency: 'USD',
+    billing_type: 'easypost',
+    delivery_days: 2,
+    delivery_date: null,
+    delivery_date_guaranteed: false,
+    est_delivery_days: 2,
+    shipment_id: 'shp_0de9af09bd4042e1a9fa5231583ce19c',
+    carrier_account_id: 'ca_17ee02d95ec64ad9aa35dac979ca1bf5',
+    _params: { shipment: [Object] }
+  },
+  Y {
+    id: 'rate_7c39df071f8945fb9242d706eba43d02',
+    object: 'Rate',
+    created_at: '2025-06-21T21:42:45Z',
+    updated_at: '2025-06-21T21:42:45Z',
+    mode: 'test',
+    service: 'Priority',
+    carrier: 'USPS',
+    rate: '7.27',
+    currency: 'USD',
+    retail_rate: '9.90',
+    retail_currency: 'USD',
+    list_rate: '8.34',
+    list_currency: 'USD',
+    billing_type: 'easypost',
+    delivery_days: 3,
+    delivery_date: null,
+    delivery_date_guaranteed: false,
+    est_delivery_days: 3,
+    shipment_id: 'shp_0de9af09bd4042e1a9fa5231583ce19c',
+    carrier_account_id: 'ca_17ee02d95ec64ad9aa35dac979ca1bf5',
+    _params: { shipment: [Object] }
+  },
+  Y {
+    id: 'rate_ef53a24d7b50407dbe9c85ecf9794c9e',
+    object: 'Rate',
+    created_at: '2025-06-21T21:42:45Z',
+    updated_at: '2025-06-21T21:42:45Z',
+    mode: 'test',
+    service: 'GroundAdvantage',
+    carrier: 'USPS',
+    rate: '4.52',
+    currency: 'USD',
+    retail_rate: '6.20',
+    retail_currency: 'USD',
+    list_rate: '4.52',
+    list_currency: 'USD',
+    billing_type: 'easypost',
+    delivery_days: 3,
+    delivery_date: null,
+    delivery_date_guaranteed: false,
+    est_delivery_days: 3,
+    shipment_id: 'shp_0de9af09bd4042e1a9fa5231583ce19c',
+    carrier_account_id: 'ca_17ee02d95ec64ad9aa35dac979ca1bf5',
+    _params: { shipment: [Object] }
+  }
+]
+Lowest rate: Y {
+  id: 'rate_ef53a24d7b50407dbe9c85ecf9794c9e',
+  object: 'Rate',
+  created_at: '2025-06-21T21:42:45Z',
+  updated_at: '2025-06-21T21:42:45Z',
+  mode: 'test',
+  service: 'GroundAdvantage',
+  carrier: 'USPS',
+  rate: '4.52',
+  currency: 'USD',
+  retail_rate: '6.20',
+  retail_currency: 'USD',
+  list_rate: '4.52',
+  list_currency: 'USD',
+  billing_type: 'easypost',
+  delivery_days: 3,
+  delivery_date: null,
+  delivery_date_guaranteed: false,
+  est_delivery_days: 3,
+  shipment_id: 'shp_0de9af09bd4042e1a9fa5231583ce19c',
+  carrier_account_id: 'ca_17ee02d95ec64ad9aa35dac979ca1bf5',
+  _params: {
+    shipment: {
+      to_address: [undefined],
+      from_address: [undefined],
+      parcel: [K],
+      carrier_accounts: [Array],
+      service: 'Priority',
+      options: [Object]
+    }
+  }
+}
+EasyPost detailed error: {
+  message: 'Postage already exists for this shipment.',
+  code: 'SHIPMENT.POSTAGE.EXISTS',
+  errors: [],
+  statusCode: 422,
+  fullError: lt [Error]: Postage already exists for this shipment.
+      at Pt.handleApiError (file:///home/runner/workspace/node_modules/@easypost/api/dist/easypost.mjs:230:16)
+      at p._request (file:///home/runner/workspace/node_modules/@easypost/api/dist/easypost.mjs:2718:59)
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async Function.buy (file:///home/runner/workspace/node_modules/@easypost/api/dist/easypost.mjs:2068:19)
+      at async EasyPostService.createShippingLabel (/home/runner/workspace/server/easypost.ts:80:22)
+      at async <anonymous> (/home/runner/workspace/server/routes.ts:860:29) {
+    code: 'SHIPMENT.POSTAGE.EXISTS',
+    errors: [],
+    statusCode: 422
+  }
+}
+Error creating shipping label: Error: EasyPost error: SHIPMENT.POSTAGE.EXISTS - Postage already exists for this shipment.
+    at EasyPostService.createShippingLabel (/home/runner/workspace/server/easypost.ts:107:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:860:29)
+9:42:46 PM [express] POST /api/orders/recAJ3O4XAPTrUmLj/create-shipping-label 500 in 2599ms :: {"suc…
