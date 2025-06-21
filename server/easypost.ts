@@ -77,9 +77,7 @@ class EasyPostService {
       console.log('Lowest rate:', lowestRate);
 
       // Buy the label with the lowest rate
-      const bought = await api.Shipment.buy(shipment.id, {
-        rate: lowestRate
-      });
+      const bought = await api.Shipment.buy(shipment.id, lowestRate);
 
       return {
         labelUrl: bought.postage_label.label_url,
