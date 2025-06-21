@@ -1,0 +1,130 @@
+omer by email: reemelfayez@hotmail.com
+No customer found with email reemelfayez@hotmail.com, falling back to payment search
+Found 0 matching payments for reemelfayez@hotmail.com
+No valid payment found for reemelfayez@hotmail.com Elfayex
+9:39:45 PM [express] GET /api/orders/recME0LIAex3pqJRl/payment-status 304 in 1848ms :: {"success":tr…
+Available rates: [
+  Y {
+    id: 'rate_859f72df6e7e4ed4845f1d2ecbedb9d1',
+    object: 'Rate',
+    created_at: '2025-06-21T21:39:46Z',
+    updated_at: '2025-06-21T21:39:46Z',
+    mode: 'test',
+    service: 'Priority',
+    carrier: 'USPS',
+    rate: '7.08',
+    currency: 'USD',
+    retail_rate: '9.70',
+    retail_currency: 'USD',
+    list_rate: '8.18',
+    list_currency: 'USD',
+    billing_type: 'easypost',
+    delivery_days: 3,
+    delivery_date: null,
+    delivery_date_guaranteed: false,
+    est_delivery_days: 3,
+    shipment_id: 'shp_a720c64ca45d4646ae57d7d0fdabadcc',
+    carrier_account_id: 'ca_17ee02d95ec64ad9aa35dac979ca1bf5',
+    _params: { shipment: [Object] }
+  },
+  Y {
+    id: 'rate_4bdac7a1b17146af8dd41f512ce1503d',
+    object: 'Rate',
+    created_at: '2025-06-21T21:39:46Z',
+    updated_at: '2025-06-21T21:39:46Z',
+    mode: 'test',
+    service: 'GroundAdvantage',
+    carrier: 'USPS',
+    rate: '3.98',
+    currency: 'USD',
+    retail_rate: '5.40',
+    retail_currency: 'USD',
+    list_rate: '3.98',
+    list_currency: 'USD',
+    billing_type: 'easypost',
+    delivery_days: 3,
+    delivery_date: null,
+    delivery_date_guaranteed: false,
+    est_delivery_days: 3,
+    shipment_id: 'shp_a720c64ca45d4646ae57d7d0fdabadcc',
+    carrier_account_id: 'ca_17ee02d95ec64ad9aa35dac979ca1bf5',
+    _params: { shipment: [Object] }
+  },
+  Y {
+    id: 'rate_4cf675204ac441d4ba5d4dac9eec371b',
+    object: 'Rate',
+    created_at: '2025-06-21T21:39:46Z',
+    updated_at: '2025-06-21T21:39:46Z',
+    mode: 'test',
+    service: 'Express',
+    carrier: 'USPS',
+    rate: '27.85',
+    currency: 'USD',
+    retail_rate: '31.75',
+    retail_currency: 'USD',
+    list_rate: '27.85',
+    list_currency: 'USD',
+    billing_type: 'easypost',
+    delivery_days: 2,
+    delivery_date: null,
+    delivery_date_guaranteed: false,
+    est_delivery_days: 2,
+    shipment_id: 'shp_a720c64ca45d4646ae57d7d0fdabadcc',
+    carrier_account_id: 'ca_17ee02d95ec64ad9aa35dac979ca1bf5',
+    _params: { shipment: [Object] }
+  }
+]
+Lowest rate: Y {
+  id: 'rate_4bdac7a1b17146af8dd41f512ce1503d',
+  object: 'Rate',
+  created_at: '2025-06-21T21:39:46Z',
+  updated_at: '2025-06-21T21:39:46Z',
+  mode: 'test',
+  service: 'GroundAdvantage',
+  carrier: 'USPS',
+  rate: '3.98',
+  currency: 'USD',
+  retail_rate: '5.40',
+  retail_currency: 'USD',
+  list_rate: '3.98',
+  list_currency: 'USD',
+  billing_type: 'easypost',
+  delivery_days: 3,
+  delivery_date: null,
+  delivery_date_guaranteed: false,
+  est_delivery_days: 3,
+  shipment_id: 'shp_a720c64ca45d4646ae57d7d0fdabadcc',
+  carrier_account_id: 'ca_17ee02d95ec64ad9aa35dac979ca1bf5',
+  _params: {
+    shipment: {
+      to_address: [undefined],
+      from_address: [undefined],
+      parcel: [K],
+      carrier_accounts: [Array],
+      service: 'Priority',
+      options: [Object]
+    }
+  }
+}
+EasyPost detailed error: {
+  message: 'Missing required parameter.',
+  code: 'PARAMETER.REQUIRED',
+  errors: [ { field: 'rate', message: 'cannot be blank' } ],
+  statusCode: 422,
+  fullError: lt [Error]: Missing required parameter.
+      at Pt.handleApiError (file:///home/runner/workspace/node_modules/@easypost/api/dist/easypost.mjs:230:16)
+      at p._request (file:///home/runner/workspace/node_modules/@easypost/api/dist/easypost.mjs:2718:59)
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async Function.buy (file:///home/runner/workspace/node_modules/@easypost/api/dist/easypost.mjs:2068:19)
+      at async EasyPostService.createShippingLabel (/home/runner/workspace/server/easypost.ts:80:22)
+      at async <anonymous> (/home/runner/workspace/server/routes.ts:860:29) {
+    code: 'PARAMETER.REQUIRED',
+    errors: [ [Object] ],
+    statusCode: 422
+  }
+}
+Error creating shipping label: Error: EasyPost error: PARAMETER.REQUIRED - Missing required parameter.
+    at EasyPostService.createShippingLabel (/home/runner/workspace/server/easypost.ts:109:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:860:29)
+9:39:47 PM [express] POST /api/orders/recME0LIAex3pqJRl/create-shipping-label 500 in 2716ms :: {"suc…
