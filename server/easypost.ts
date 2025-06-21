@@ -1,4 +1,3 @@
-
 import EasyPost from '@easypost/api';
 
 // EasyPost API configuration
@@ -72,8 +71,15 @@ class EasyPostService {
         options: { label_format: 'PDF' },
       });
 
+      // Get the lowest rate
+      const lowestRate = shipment.lowestRate();
+      console.log('Available rates:', shipment.rates);
+      console.log('Lowest rate:', lowestRate);
+
       // Buy the label with the lowest rate
-      const bought = await shipment.buy(shipment.lowestRate());
+      const bought = await api.Shipment.buy(shipment.id, {
+        rate: lowestRate
+      });
 
       return {
         labelUrl: bought.postage_label.label_url,
@@ -81,9 +87,26 @@ class EasyPostService {
         postage: parseFloat(bought.selected_rate.rate),
         carrier: 'USPS'
       };
-    } catch (error) {
-      console.error('EasyPost error:', error);
-      throw new Error('Failed to create shipping label');
+    } catch (error: any) {
+      console.error('EasyPost detailed error:', {
+        message: error.message,
+        code: error.code,
+        errors: error.errors,
+        statusCode: error.statusCode,
+        fullError: error
+      });
+
+      let errorMessage = 'Failed to create shipping label';
+
+      if (error.code === 'SHIPMENT.CARRIER_ACCOUNTS.INVALID') {
+        errorMessage = 'USPS carrier account not configured in EasyPost. Please set up USPS carrier account in your EasyPost dashboard.';
+      } else if (error.code) {
+        errorMessage = `EasyPost error: ${error.code} - ${error.message}`;
+      } else if (error.message) {
+        errorMessage = `EasyPost error: ${error.message}`;
+      }
+
+      throw new Error(errorMessage);
     }
   }
 
@@ -113,7 +136,7 @@ class EasyPostService {
         tracking_code: trackingNumber,
         carrier: 'USPS'
       });
-      
+
       return tracker;
     } catch (error) {
       console.error('Tracking error:', error);
