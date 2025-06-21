@@ -71,13 +71,23 @@ class EasyPostService {
         options: { label_format: 'PDF' },
       });
 
-      // Get the lowest rate
-      const lowestRate = shipment.lowestRate();
-      console.log('Available rates:', shipment.rates);
-      console.log('Lowest rate:', lowestRate);
+      // Get the lowest rate or the rate that matches the requested service type
+      let selectedRate;
+      if (request.serviceType === 'Ground') {
+        selectedRate = shipment.rates.find((rate: any) => rate.service === 'GroundAdvantage') || shipment.lowestRate();
+      } else if (request.serviceType === 'Priority') {
+        selectedRate = shipment.rates.find((rate: any) => rate.service === 'Priority') || shipment.lowestRate();
+      } else if (request.serviceType === 'Express') {
+        selectedRate = shipment.rates.find((rate: any) => rate.service === 'Express') || shipment.lowestRate();
+      } else {
+        selectedRate = shipment.lowestRate();
+      }
 
-      // Buy the label with the lowest rate
-      const bought = await api.Shipment.buy(shipment.id, lowestRate);
+      console.log('Available rates:', shipment.rates);
+      console.log('Selected rate:', selectedRate);
+
+      // Buy the label with the selected rate
+      const bought = await api.Shipment.buy(shipment.id, selectedRate);
 
       return {
         labelUrl: bought.postage_label.label_url,
