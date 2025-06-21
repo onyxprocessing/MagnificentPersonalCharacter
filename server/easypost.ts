@@ -62,13 +62,13 @@ class EasyPostService {
         weight: request.weight,
       });
 
-      // Create shipment
+      // Create shipment with specific carrier account
       const shipment = await api.Shipment.create({
         to_address: toAddress,
         from_address: fromAddress,
         parcel: parcel,
+        carrier_accounts: ['ca_17ee02d95ec64ad9aa35dac979ca1bf5'], // Your USPS carrier account ID
         service: request.serviceType,
-        carrier: 'USPS',
         options: { label_format: 'PDF' },
       });
 
