@@ -14,6 +14,7 @@ import { useEffect, useState, useCallback } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import PayWithStripeButton from "./PayWithStripeButton";
 import PartialFulfillmentModal from "./PartialFulfillmentModal";
+import ShippingLabelModal from "./ShippingLabelModal";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -113,6 +114,7 @@ export default function OrderDetailModal({
     shipping: false
   });
   const [partialFulfillmentModalOpen, setPartialFulfillmentModalOpen] = useState(false);
+  const [shippingLabelModalOpen, setShippingLabelModalOpen] = useState(false);
   const [markingShipped, setMarkingShipped] = useState(false);
 
   // Notes state and auto-save functionality
@@ -858,6 +860,15 @@ export default function OrderDetailModal({
             </Button>
             <Button 
               variant="outline" 
+              className="flex items-center border-blue-600 text-blue-600 hover:bg-blue-50"
+              onClick={() => setShippingLabelModalOpen(true)}
+              disabled={loading || !order}
+            >
+              <Package className="w-4 h-4 mr-2" />
+              Create Shipping Label
+            </Button>
+            <Button 
+              variant="outline" 
               className="flex items-center text-red-500 hover:bg-red-50 hover:text-red-600"
               onClick={handleCancelOrder}
               disabled={loading || !order}
@@ -877,6 +888,16 @@ export default function OrderDetailModal({
         onOrderUpdate={(updatedOrder) => {
           // Update the order data and trigger re-fetch if needed
           onUpdateStatus(updatedOrder.id, updatedOrder.status || '');
+        }}
+      />
+
+      {/* Shipping Label Modal */}
+      <ShippingLabelModal
+        isOpen={shippingLabelModalOpen}
+        onClose={() => setShippingLabelModalOpen(false)}
+        order={order}
+        onOrderUpdate={(orderId, status) => {
+          onUpdateStatus(orderId, status);
         }}
       />
     </Dialog>

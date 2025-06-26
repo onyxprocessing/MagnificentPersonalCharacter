@@ -53,7 +53,7 @@ export default function PartialFulfillmentModal({
     const items: FulfillmentItem[] = order.cartItems.map(item => {
       const itemKey = `${item.productId}-${item.selectedWeight}`;
       const partialData = order.partialDetails?.[itemKey];
-      
+
       return {
         productId: item.productId,
         productName: item.product?.name || 'Unknown Product',
@@ -104,7 +104,7 @@ export default function PartialFulfillmentModal({
       // Determine if order is partially fulfilled (not 100% complete but has some fulfillment)
       const totalProgress = getTotalProgress();
       const isPartiallyFulfilled = totalProgress > 0 && totalProgress < 100;
-      
+
       // Update order with partial details and tracking
       const updates: Partial<Order> = {
         partialDetails,
@@ -114,7 +114,7 @@ export default function PartialFulfillmentModal({
       };
 
       const response = await apiRequest('PATCH', `/api/orders/${order.id}`, updates);
-      
+
       if (response.ok) {
         const updatedOrder = await response.json();
         onOrderUpdate(updatedOrder.data);
@@ -166,7 +166,7 @@ export default function PartialFulfillmentModal({
             Manage Partial Fulfillment - {order?.checkoutId}
           </DialogTitle>
         </DialogHeader>
-        
+
         {order && (
           <div className="space-y-6">
             {/* Progress Overview */}
@@ -215,13 +215,13 @@ export default function PartialFulfillmentModal({
                         {status.charAt(0).toUpperCase() + status.slice(1)}
                       </Badge>
                     </div>
-                    
+
                     <div className="grid grid-cols-3 gap-4 items-end">
                       <div>
                         <Label className="text-xs text-gray-500">Total Ordered</Label>
                         <div className="text-lg font-semibold">{item.totalQuantity}</div>
                       </div>
-                      
+
                       <div>
                         <Label htmlFor={`fulfilled-${index}`} className="text-xs text-gray-500">
                           Fulfilled Quantity
@@ -236,7 +236,7 @@ export default function PartialFulfillmentModal({
                           className="mt-1"
                         />
                       </div>
-                      
+
                       <div>
                         <Label className="text-xs text-gray-500">Remaining</Label>
                         <div className="text-lg font-semibold text-orange-600">
@@ -244,7 +244,7 @@ export default function PartialFulfillmentModal({
                         </div>
                       </div>
                     </div>
-                    
+
                     {/* Progress bar for this item */}
                     <div className="mt-3">
                       <div className="w-full bg-gray-200 rounded-full h-2">
@@ -265,7 +265,7 @@ export default function PartialFulfillmentModal({
             </div>
           </div>
         )}
-        
+
         <DialogFooter className="flex justify-end space-x-3 border-t border-gray-200 pt-4">
           <Button variant="outline" onClick={onClose}>
             Cancel
@@ -282,3 +282,4 @@ export default function PartialFulfillmentModal({
     </Dialog>
   );
 }
+`
