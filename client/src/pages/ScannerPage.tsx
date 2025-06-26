@@ -418,7 +418,6 @@ export default function ScannerPage() {
                     playsInline
                     muted
                     controls={false}
-                    webkit-playsinline="true"
                     className="w-full h-64 sm:h-80 bg-gray-900 rounded-lg object-cover border-2 border-gray-300"
                     style={{ 
                       transform: 'scaleX(-1)',
