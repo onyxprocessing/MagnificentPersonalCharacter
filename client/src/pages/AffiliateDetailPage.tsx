@@ -1,5 +1,5 @@
 import { useParams } from "wouter";
-import { ArrowLeft, DollarSign, Users, ShoppingCart, Percent, CalendarIcon, Download } from "lucide-react";
+import { ArrowLeft, DollarSign, Users, ShoppingCart, Percent, CalendarIcon, Download, Trophy, Medal, Award } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAffiliates, useAffiliateOrders, useAffiliateStats } from "@/hooks/use-affiliates";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subWeeks, subMonths } from "date-fns";
 import { useState } from "react";
+import React from "react";
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Sidebar from '@/components/layout/Sidebar';
@@ -87,6 +88,63 @@ export default function AffiliateDetailPage() {
 
   // Find the specific affiliate
   const affiliate = affiliatesData?.data?.find((a: any) => a.fields.Code === code);
+
+  // Calculate rankings for all affiliates based on total sales
+  const affiliateRankings = React.useMemo(() => {
+    if (!affiliatesData?.data) return [];
+    
+    const rankingsData = affiliatesData.data.map((aff: any) => {
+      const affiliateOrders = ordersData?.data?.filter((order: any) => 
+        order.fields.affiliatecode === aff.fields.Code
+      ) || [];
+      
+      const totalSales = affiliateOrders.reduce((sum: number, order: any) => {
+        const total = parseFloat(order.fields.total || '0');
+        return sum + (isNaN(total) ? 0 : total);
+      }, 0);
+      
+      return {
+        code: aff.fields.Code,
+        name: `${aff.fields['First Name']} ${aff.fields['Last Name']}`,
+        totalSales
+      };
+    });
+    
+    // Sort by total sales descending
+    return rankingsData.sort((a, b) => b.totalSales - a.totalSales);
+  }, [affiliatesData?.data, ordersData?.data]);
+
+  // Get current affiliate's rank
+  const currentAffiliateRank = affiliateRankings.findIndex(
+    (aff: any) => aff.code === code
+  ) + 1;
+
+  // Get trophy/medal component based on rank
+  const getRankIcon = (rank: number) => {
+    switch (rank) {
+      case 1:
+        return <Trophy className="h-6 w-6 text-yellow-500" />;
+      case 2:
+        return <Medal className="h-6 w-6 text-gray-400" />;
+      case 3:
+        return <Award className="h-6 w-6 text-amber-600" />;
+      default:
+        return null;
+    }
+  };
+
+  const getRankColor = (rank: number) => {
+    switch (rank) {
+      case 1:
+        return "text-yellow-500 bg-yellow-50 border-yellow-200";
+      case 2:
+        return "text-gray-600 bg-gray-50 border-gray-200";
+      case 3:
+        return "text-amber-600 bg-amber-50 border-amber-200";
+      default:
+        return "text-muted-foreground bg-muted border-border";
+    }
+  };
   
   if (!affiliate) {
     return (
@@ -486,6 +544,22 @@ export default function AffiliateDetailPage() {
                       </span>
                     </div>
                   </div>
+                  <div className="sm:col-span-2">
+                    <label className="text-sm font-medium text-muted-foreground">Performance Ranking</label>
+                    <div className={`flex items-center gap-2 p-3 rounded-lg border ${getRankColor(currentAffiliateRank)}`}>
+                      {getRankIcon(currentAffiliateRank)}
+                      <span className="text-lg font-semibold">
+                        #{currentAffiliateRank} of {affiliateRankings.length}
+                        {currentAffiliateRank <= 3 && (
+                          <span className="ml-2 text-sm font-normal">
+                            {currentAffiliateRank === 1 ? "🏆 Top Performer!" : 
+                             currentAffiliateRank === 2 ? "🥈 Excellent!" : 
+                             "🥉 Great Work!"}
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -528,6 +602,100 @@ export default function AffiliateDetailPage() {
               </Card>
             </div>
           </div>
+
+          {/* Top Performers Leaderboard */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-yellow-500" />
+                Top Performers Leaderboard
+              </CardTitle>
+              <CardDescription>
+                Rankings based on total sales volume
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {affiliateRankings.slice(0, 3).map((rankedAffiliate: any, index: number) => {
+                  const rank = index + 1;
+                  const isCurrentAffiliate = rankedAffiliate.code === code;
+                  
+                  return (
+                    <div 
+                      key={rankedAffiliate.code}
+                      className={`flex items-center justify-between p-4 rounded-lg border ${
+                        isCurrentAffiliate 
+                          ? `${getRankColor(rank)} ring-2 ring-offset-2 ring-current` 
+                          : getRankColor(rank)
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
+                          {getRankIcon(rank)}
+                          <span className="text-2xl font-bold">#{rank}</span>
+                        </div>
+                        <div>
+                          <div className="font-semibold flex items-center gap-2">
+                            {rankedAffiliate.name}
+                            {isCurrentAffiliate && (
+                              <Badge variant="outline" className="text-xs">
+                                You
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Code: {rankedAffiliate.code}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-bold">
+                          ${rankedAffiliate.totalSales.toFixed(2)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Total Sales
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                
+                {currentAffiliateRank > 3 && (
+                  <>
+                    <div className="text-center text-muted-foreground py-2">
+                      <span className="text-sm">...</span>
+                    </div>
+                    <div className={`flex items-center justify-between p-4 rounded-lg border ${getRankColor(currentAffiliateRank)} ring-2 ring-offset-2 ring-current`}>
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl font-bold">#{currentAffiliateRank}</span>
+                        </div>
+                        <div>
+                          <div className="font-semibold flex items-center gap-2">
+                            {affiliate.fields['First Name']} {affiliate.fields['Last Name']}
+                            <Badge variant="outline" className="text-xs">
+                              You
+                            </Badge>
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Code: {affiliate.fields.Code}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-bold">
+                          ${filteredStats.totalSales.toFixed(2)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Total Sales
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
       {/* Recent Orders */}
           <Card>
