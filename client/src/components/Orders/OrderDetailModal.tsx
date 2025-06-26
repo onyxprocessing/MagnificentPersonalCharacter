@@ -816,67 +816,34 @@ export default function OrderDetailModal({
           </div>
         )}
 
-        <DialogFooter className="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-3 border-t border-gray-200 pt-4">
-          <div className="flex space-x-3">
-            <Button variant="outline" className="flex items-center">
-              <Download className="w-4 h-4 mr-2" />
-              Export Invoice
-            </Button>
-            <Button 
-              variant="outline" 
-              className="flex items-center text-green-600 hover:bg-green-50 hover:text-green-700"
-              onClick={handleMarkAsShipped}
-              disabled={markingShipped || !order}
-            >
-              <Truck className="w-4 h-4 mr-2" />
-              {markingShipped ? 'Marking...' : 'Mark as Shipped'}
-              {order?.shipped && <span className="ml-2 text-green-600">✓</span>}
-            </Button>
-             <Button
-                onClick={createShippingLabel}
-                disabled={isCreatingLabel}
-                className="bg-blue-600 text-white hover:bg-blue-700 flex items-center"
-              >
-                <PrinterIcon className="w-4 h-4 mr-2" />
-                {isCreatingLabel ? "Creating Label..." : "Generate Label"}
-              </Button>
-          </div>
-          <div className="flex space-x-3">
-            {/* Show Pay with Stripe button for orders in payment selection status that haven't been verified yet */}
-            {order?.status === 'payment_selection' && !paymentStatus.paymentVerified && (
-              <PayWithStripeButton 
-                order={order} 
-                disabled={loading || !order || paymentStatus.loading} 
-              />
-            )}
-            <Button 
-              variant="default" 
-              className="flex items-center bg-blue-600 hover:bg-blue-700"
-              onClick={() => setPartialFulfillmentModalOpen(true)}
-              disabled={loading || !order}
-            >
-              <Package className="w-4 h-4 mr-2" />
-              Manage Fulfillment
-            </Button>
-            <Button 
-              variant="outline" 
-              className="flex items-center border-blue-600 text-blue-600 hover:bg-blue-50"
-              onClick={() => setShippingLabelModalOpen(true)}
-              disabled={loading || !order}
-            >
-              <Package className="w-4 h-4 mr-2" />
-              Create Shipping Label
-            </Button>
-            <Button 
-              variant="outline" 
-              className="flex items-center text-red-500 hover:bg-red-50 hover:text-red-600"
-              onClick={handleCancelOrder}
-              disabled={loading || !order}
-            >
-              <Ban className="w-4 h-4 mr-2" />
-              Cancel Order
-            </Button>
-          </div>
+        <DialogFooter className="flex justify-end space-x-3 border-t border-gray-200 pt-4">
+          <Button 
+            variant="default" 
+            className="flex items-center bg-blue-600 hover:bg-blue-700"
+            onClick={() => setPartialFulfillmentModalOpen(true)}
+            disabled={loading || !order}
+          >
+            <Package className="w-4 h-4 mr-2" />
+            Manage Fulfillment
+          </Button>
+          <Button 
+            variant="outline" 
+            className="flex items-center border-blue-600 text-blue-600 hover:bg-blue-50"
+            onClick={() => setShippingLabelModalOpen(true)}
+            disabled={loading || !order}
+          >
+            <Package className="w-4 h-4 mr-2" />
+            Create Shipping Label
+          </Button>
+          <Button 
+            variant="outline" 
+            className="flex items-center text-red-500 hover:bg-red-50 hover:text-red-600"
+            onClick={handleCancelOrder}
+            disabled={loading || !order}
+          >
+            <Ban className="w-4 h-4 mr-2" />
+            Cancel Order
+          </Button>
         </DialogFooter>
       </DialogContent>
 
