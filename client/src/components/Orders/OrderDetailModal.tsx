@@ -526,25 +526,6 @@ export default function OrderDetailModal({
                 </div>
               )}
 
-              {labelData && (
-                <div className="space-y-3 p-4 border border-green-200 rounded-lg bg-green-50">
-                  <div className="flex items-center space-x-2 mb-3">
-                    <Check className="w-5 h-5 text-green-600" />
-                    <span className="text-lg font-semibold text-green-800">Label Created Successfully!</span>
-                  </div>
-                  <div className="flex items-center space-x-4">
-                    <Button onClick={downloadLabel} className="bg-green-600 text-white hover:bg-green-700">
-                      <Download className="mr-2 h-4 w-4" />
-                      Download Label
-                    </Button>
-                    <Button onClick={printLabel} className="bg-purple-600 text-white hover:bg-purple-700">
-                      <PrinterIcon className="mr-2 h-4 w-4" />
-                      Print Label
-                    </Button>
-                    <div className="text-lg font-semibold text-green-700">Postage: ${labelData.postage}</div>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Order Items */}
