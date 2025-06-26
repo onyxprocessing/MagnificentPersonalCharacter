@@ -224,15 +224,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log(`Scanner: Looking for tracking number: ${trackingNumber}`);
+      console.log('Airtable client available:', typeof airtableClient);
 
       try {
         // First, use direct Airtable search to find orders with this tracking number in the tracking field
         const trackingQuery = {
           filterByFormula: `{tracking} = "${trackingNumber.trim()}"`,
-          pageSize: 10
+          maxRecords: 10
         };
 
         console.log(`Searching Airtable tracking field with formula: {tracking} = "${trackingNumber.trim()}"`);
+        console.log('Query object:', JSON.stringify(trackingQuery));
 
         // Search directly in Airtable for tracking number matches
         const trackingRecords = await airtableClient('carts').select(trackingQuery).all();
@@ -433,10 +435,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error) {
       console.error('Scanner endpoint error:', error);
-      console.error('Error stack:', error.stack);
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+      
+      // Provide a more detailed error message
+      let errorMessage = 'Failed to process tracking number';
+      if (error instanceof Error) {
+        errorMessage += `: ${error.message}`;
+      } else if (typeof error === 'string') {
+        errorMessage += `: ${error}`;
+      } else {
+        errorMessage += ': Unknown error occurred';
+      }
+
       return res.status(500).json({
         success: false,
-        message: 'Failed to process tracking number: ' + (error instanceof Error ? error.message : 'Unknown error')
+        message: errorMessage,
+        error: error instanceof Error ? error.message : String(error)
       });
     }
   });
