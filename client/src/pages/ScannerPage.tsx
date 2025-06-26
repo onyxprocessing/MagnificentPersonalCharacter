@@ -43,7 +43,25 @@ export default function ScannerPage() {
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        setIsScanning(true);
+        
+        // Wait for video to load and start playing
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play().then(() => {
+            setIsScanning(true);
+            toast({
+              title: "Camera Ready",
+              description: "Point camera at the tracking number on the package label",
+              variant: "default"
+            });
+          }).catch((playError) => {
+            console.error('Error playing video:', playError);
+            toast({
+              title: "Camera Error",
+              description: "Could not start video playback. Please try again.",
+              variant: "destructive"
+            });
+          });
+        };
       }
     } catch (error) {
       console.error('Error accessing camera:', error);
@@ -270,6 +288,14 @@ export default function ScannerPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 
+                {/* Camera Status */}
+                {isScanning && (
+                  <div className="flex items-center justify-center gap-2 p-2 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="text-sm text-green-700">Camera Active</span>
+                  </div>
+                )}
+
                 {/* Camera Controls */}
                 <div className="flex gap-2">
                   {!isScanning ? (
@@ -298,10 +324,14 @@ export default function ScannerPage() {
                       autoPlay
                       playsInline
                       muted
+                      webkit-playsinline="true"
                       className="w-full h-64 bg-black rounded-lg object-cover"
+                      style={{ transform: 'scaleX(-1)' }}
                     />
                     <div className="absolute inset-0 border-2 border-blue-500 border-dashed rounded-lg pointer-events-none">
-                      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-16 border-2 border-blue-500 rounded"></div>
+                      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-16 border-2 border-blue-500 rounded bg-blue-500/10">
+                        <div className="text-center text-xs text-blue-600 mt-6">Focus tracking number here</div>
+                      </div>
                     </div>
                   </div>
                 )}
