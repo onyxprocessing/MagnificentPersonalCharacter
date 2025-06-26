@@ -94,10 +94,10 @@ export default function ScannerPage() {
       if (videoRef.current) {
         // Set up video element
         const video = videoRef.current;
-        
+
         // Clear any existing source first
         video.srcObject = null;
-        
+
         // Set critical iOS attributes BEFORE setting srcObject
         video.setAttribute('playsinline', '');
         video.setAttribute('webkit-playsinline', '');
@@ -107,7 +107,7 @@ export default function ScannerPage() {
         video.muted = true;
         video.autoplay = true;
         video.playsInline = true;
-        
+
         // Set dimensions to ensure visibility
         video.style.width = '100%';
         video.style.height = 'auto';
@@ -124,16 +124,16 @@ export default function ScannerPage() {
             console.log('Video metadata loaded, attempting to play');
             console.log('Video readyState:', video.readyState);
             console.log('Video dimensions:', video.videoWidth, 'x', video.videoHeight);
-            
+
             // Force play for iOS
             const playPromise = video.play();
             if (playPromise !== undefined) {
               await playPromise;
             }
-            
+
             console.log('Video playing successfully');
             setIsScanning(true);
-            
+
             // Double check the video is actually playing
             setTimeout(() => {
               console.log('Video paused?', video.paused);
@@ -143,7 +143,7 @@ export default function ScannerPage() {
                 video.play().catch(console.error);
               }
             }, 500);
-            
+
             toast({
               title: "📱 Camera Ready",
               description: "Camera is now active! Point at tracking number on package label",
@@ -177,7 +177,7 @@ export default function ScannerPage() {
         video.removeEventListener('loadedmetadata', handleLoadedMetadata);
         video.removeEventListener('error', handleVideoError);
         video.removeEventListener('canplay', handleCanPlay);
-        
+
         // Add event listeners
         video.addEventListener('loadedmetadata', handleLoadedMetadata);
         video.addEventListener('error', handleVideoError);
@@ -254,7 +254,7 @@ export default function ScannerPage() {
     // Optimize canvas size - limit to reasonable dimensions for OCR
     const maxWidth = 1280;
     const maxHeight = 720;
-    
+
     let { width, height } = { width: video.videoWidth, height: video.videoHeight };
 
     // Scale down if too large
@@ -321,23 +321,23 @@ export default function ScannerPage() {
       // Convert image to canvas for processing
       const img = new Image();
       img.src = imageData;
-      
+
       await new Promise((resolve) => {
         img.onload = resolve;
       });
-      
+
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       if (!ctx) return null;
-      
+
       canvas.width = img.width;
       canvas.height = img.height;
       ctx.drawImage(img, 0, 0);
-      
+
       // Convert to grayscale and increase contrast
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const data = imageData.data;
-      
+
       for (let i = 0; i < data.length; i += 4) {
         const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
         const contrast = gray > 128 ? 255 : 0; // High contrast
@@ -345,13 +345,13 @@ export default function ScannerPage() {
         data[i + 1] = contrast; // green
         data[i + 2] = contrast; // blue
       }
-      
+
       ctx.putImageData(imageData, 0, 0);
-      
+
       // For now, return null - this would need more advanced image processing
       // to extract text without a proper OCR library
       return null;
-      
+
     } catch (error) {
       console.error('Image processing error:', error);
       return null;
@@ -362,38 +362,38 @@ export default function ScannerPage() {
   const extractTrackingFromImage = async (imageData: string): Promise<string | null> => {
     try {
       console.log('Starting Google Cloud Vision OCR processing...');
-      
+
       // Convert base64 to blob for the API call
       const base64Data = imageData.split(',')[1]; // Remove data:image/jpeg;base64, prefix
-      
+
       // Check image size before sending
       const imageSizeKB = Math.round((base64Data.length * 3) / 4 / 1024);
       console.log('Image size for OCR:', imageSizeKB, 'KB');
-      
+
       if (imageSizeKB > 10000) { // 10MB limit
         console.warn('Image too large for OCR, trying compression...');
         // Further compress the image if it's still too large
         const img = new Image();
         img.src = imageData;
         await new Promise(resolve => img.onload = resolve);
-        
+
         const compressCanvas = document.createElement('canvas');
         const compressCtx = compressCanvas.getContext('2d');
         if (!compressCtx) throw new Error('Cannot create compression canvas');
-        
+
         // Further reduce size
         const maxSize = 800;
         const scale = Math.min(maxSize / img.width, maxSize / img.height);
         compressCanvas.width = Math.floor(img.width * scale);
         compressCanvas.height = Math.floor(img.height * scale);
-        
+
         compressCtx.drawImage(img, 0, 0, compressCanvas.width, compressCanvas.height);
         const compressedData = compressCanvas.toDataURL('image/jpeg', 0.4).split(',')[1];
-        
+
         console.log('Compressed image size:', Math.round((compressedData.length * 3) / 4 / 1024), 'KB');
         return await sendOCRRequest(compressedData);
       }
-      
+
       return await sendOCRRequest(base64Data);
     } catch (error) {
       console.error('Google Vision OCR error:', error);
@@ -405,7 +405,7 @@ export default function ScannerPage() {
   // Separate function to handle OCR API request
   const sendOCRRequest = async (base64Data: string): Promise<string | null> => {
     try {
-      
+
       // Call our backend API endpoint for Google Cloud Vision
       const response = await fetch('/api/ocr/google-vision', {
         method: 'POST',
@@ -416,23 +416,23 @@ export default function ScannerPage() {
           imageData: base64Data
         })
       });
-      
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Google Vision API call failed:', response.status, errorText);
         throw new Error(`OCR API failed: ${response.status}`);
       }
-      
+
       const result = await response.json();
       console.log('Google Vision OCR Raw Text:', result.text);
-      
+
       if (!result.text) {
         console.log('No text detected by Google Vision');
         return null;
       }
-      
+
       return extractTrackingFromText(result.text);
-      
+
     } catch (error) {
       console.error('OCR request error:', error);
       throw error;
@@ -448,24 +448,24 @@ export default function ScannerPage() {
       /\b93\d{20}\b/g,                    // 9300 series (22 digits)
       /\b82\d{8}\b/g,                     // Certified Mail
       /\b70\d{14}\b/g,                    // Express Mail
-      
+
       // UPS patterns
       /\b1Z[A-Z0-9]{16}\b/g,              // Standard UPS format
-      
+
       // FedEx patterns
       /\b\d{12}\b/g,                      // 12 digit FedEx
       /\b\d{14}\b/g,                      // 14 digit FedEx
       /\b\d{20}\b/g,                      // 20 digit FedEx
-      
+
       // DHL patterns
       /\b\d{10,11}\b/g,                   // 10-11 digit DHL
-      
+
       // General long number patterns (fallback)
       /\b\d{15,22}\b/g                    // Any 15-22 digit number
     ];
-    
+
     const cleanText = text.replace(/\s+/g, ' ').trim();
-    
+
     for (const pattern of trackingPatterns) {
       const matches = cleanText.match(pattern);
       if (matches && matches.length > 0) {
@@ -474,14 +474,14 @@ export default function ScannerPage() {
         return trackingNumber;
       }
     }
-    
+
     // Try looking for patterns with spaces or dashes
     const spacedPatterns = [
       /\b94\d{2}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{2}\b/g,
       /\b92\d{2}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{2}\b/g,
       /\b1Z\s?[A-Z0-9]{3}\s?[A-Z0-9]{3}\s?[A-Z0-9]{10}\b/g
     ];
-    
+
     for (const pattern of spacedPatterns) {
       const matches = cleanText.match(pattern);
       if (matches && matches.length > 0) {
@@ -490,7 +490,7 @@ export default function ScannerPage() {
         return trackingNumber;
       }
     }
-    
+
     console.log('No tracking number patterns found in text');
     return null;
   };
@@ -499,21 +499,21 @@ export default function ScannerPage() {
   const extractTrackingFromImageTesseract = async (imageData: string): Promise<string | null> => {
     try {
       console.log('Falling back to Tesseract.js OCR...');
-      
+
       // Dynamic import to avoid loading Tesseract unless needed
       const Tesseract = await import('tesseract.js');
-      
+
       // Configure Tesseract for better tracking number recognition
       const { data: { text } } = await Tesseract.recognize(imageData, 'eng', {
         logger: m => console.log('Tesseract Progress:', m),
         tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ ',
         tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT
       });
-      
+
       console.log('Tesseract OCR Raw Text:', text);
-      
+
       return extractTrackingFromText(text);
-      
+
     } catch (error) {
       console.error('Tesseract OCR Error:', error);
       return null;
@@ -527,55 +527,84 @@ export default function ScannerPage() {
     setIsProcessing(true);
 
     try {
-      // Search for orders with this tracking number or try to match it to pending orders
-      const response = await apiRequest('GET', `/api/orders?search=${trackingNumber}`);
+      // Use the dedicated scanner endpoint for tracking number lookup
+      const response = await apiRequest('POST', '/api/scanner/process-tracking', {
+        trackingNumber: trackingNumber.trim()
+      });
 
-      if (response.success && response.data.length > 0) {
-        const order = response.data[0];
+      if (response.success && response.data.found) {
+        const order = response.data.order;
 
         // Check if already fulfilled
         if (order.completed) {
           addScannedPackage({
             trackingNumber,
             orderId: order.id,
-            customerName: `${order.firstname} ${order.lastname}`,
+            customerName: order.customerName,
             status: 'already_fulfilled',
             timestamp: new Date()
           });
 
           toast({
             title: "Already Fulfilled",
-            description: `Order for ${order.firstname} ${order.lastname} is already marked as fulfilled.`,
+            description: `Order for ${order.customerName} is already marked as fulfilled.`,
             variant: "destructive"
           });
           return;
         }
 
-        // Mark as fulfilled
-        await apiRequest('PATCH', `/api/orders/${order.id}`, {
+        // Check if this order already has this tracking number assigned
+        if (order.hasExistingTracking && order.tracking === trackingNumber) {
+          addScannedPackage({
+            trackingNumber,
+            orderId: order.id,
+            customerName: order.customerName,
+            status: 'found',
+            timestamp: new Date()
+          });
+
+          toast({
+            title: "Tracking Already Assigned",
+            description: `Order for ${order.customerName} already has this tracking number assigned.`,
+            variant: "default"
+          });
+          return;
+        }
+
+        // Mark as fulfilled and assign tracking if needed
+        const updateData: any = {
           completed: true,
           partial: false,
-          tracking: trackingNumber,
           shipped: true,
           shippingLabelCreated: true
-        });
+        };
+
+        // Only update tracking if it's not already set to this number
+        if (!order.tracking || order.tracking !== trackingNumber) {
+          updateData.tracking = trackingNumber;
+        }
+
+        await apiRequest('PATCH', `/api/orders/${order.id}`, updateData);
 
         addScannedPackage({
           trackingNumber,
           orderId: order.id,
-          customerName: `${order.firstname} ${order.lastname}`,
+          customerName: order.customerName,
           status: 'found',
           timestamp: new Date()
         });
 
+        const actionText = order.needsTrackingAssignment ? 
+          'assigned tracking number to and marked' : 'marked';
+
         toast({
           title: "Order Fulfilled!",
-          description: `Successfully marked order for ${order.firstname} ${order.lastname} as fulfilled.`,
+          description: `Successfully ${actionText} order for ${order.customerName} as fulfilled.`,
           variant: "default"
         });
 
       } else {
-        // Try to find by customer name or other details if tracking search fails
+        // No order found
         addScannedPackage({
           trackingNumber,
           status: 'not_found',
@@ -584,7 +613,7 @@ export default function ScannerPage() {
 
         toast({
           title: "Order Not Found",
-          description: `No pending order found for tracking number ${trackingNumber}`,
+          description: response.data.message || `No pending order found for tracking number ${trackingNumber}`,
           variant: "destructive"
         });
       }
@@ -854,11 +883,10 @@ export default function ScannerPage() {
                       <span className="text-orange-600">⏳ Starting</span>
                     )}
                   </div>
-                  
+
                   {/* Close Button - Compact */}
                   <Button 
-                    variant="ghost" 
-                    size="sm"
+                    variant="ghost"size="sm"
                     onClick={closeCameraModal}
                     className="h-8 px-3 text-gray-500"
                   >

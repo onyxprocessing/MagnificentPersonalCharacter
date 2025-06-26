@@ -225,24 +225,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`Scanner: Looking for tracking number: ${trackingNumber}`);
 
-      // Use direct Airtable search to find orders with this tracking number
-      const query = {
+      // First, use direct Airtable search to find orders with this tracking number in the tracking field
+      const trackingQuery = {
         filterByFormula: `{tracking} = "${trackingNumber.trim()}"`,
         pageSize: 10
       };
 
-      console.log(`Searching Airtable with formula: {tracking} = "${trackingNumber.trim()}"`);
+      console.log(`Searching Airtable tracking field with formula: {tracking} = "${trackingNumber.trim()}"`);
 
       // Search directly in Airtable for tracking number matches
-      const records = await airtableClient('carts').select(query).all();
+      const trackingRecords = await airtableClient('carts').select(trackingQuery).all();
       
-      console.log(`Found ${records.length} Airtable records with tracking number ${trackingNumber}`);
+      console.log(`Found ${trackingRecords.length} Airtable records with tracking number ${trackingNumber}`);
 
-      if (records.length > 0) {
-        const record = records[0];
+      if (trackingRecords.length > 0) {
+        const record = trackingRecords[0];
         const fields = record.fields;
         
-        console.log(`Found order ${record.id} for customer ${fields.firstname} ${fields.lastname}`);
+        console.log(`Found order ${record.id} for customer ${fields.firstname} ${fields.lastname} with existing tracking`);
         
         return res.json({
           success: true,
@@ -254,23 +254,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
               email: fields.email,
               completed: Boolean(fields.completed),
               tracking: fields.tracking,
-              status: fields.status || 'payment_selection'
+              status: fields.status || 'payment_selection',
+              hasExistingTracking: true
             }
           }
         });
       }
 
-      // If no exact tracking match found, try to find by general search as fallback
-      console.log(`No exact tracking match found, trying general search for ${trackingNumber}`);
+      // If no tracking field match, search in all text fields for this tracking number
+      console.log(`No tracking field match found, searching all fields for ${trackingNumber}`);
+      
+      // Search for the tracking number in firstname, lastname, email, or any other field
+      const generalSearchQuery = {
+        filterByFormula: `OR(
+          SEARCH("${trackingNumber}", {firstname}),
+          SEARCH("${trackingNumber}", {lastname}),
+          SEARCH("${trackingNumber}", {email}),
+          SEARCH("${trackingNumber}", {phone}),
+          SEARCH("${trackingNumber}", {address}),
+          SEARCH("${trackingNumber}", {notes}),
+          SEARCH("${trackingNumber}", {cartitems})
+        )`,
+        pageSize: 20
+      };
+
+      try {
+        const generalRecords = await airtableClient('carts').select(generalSearchQuery).all();
+        console.log(`Found ${generalRecords.length} records via general search for ${trackingNumber}`);
+
+        // Filter for payment_selection status orders
+        const validOrders = generalRecords.filter(record => {
+          const fields = record.fields;
+          return fields.status === 'payment_selection';
+        });
+
+        console.log(`Found ${validOrders.length} payment_selection orders via general search`);
+
+        if (validOrders.length > 0) {
+          const record = validOrders[0];
+          const fields = record.fields;
+          
+          console.log(`Found order ${record.id} for customer ${fields.firstname} ${fields.lastname} via general search`);
+          
+          return res.json({
+            success: true,
+            data: {
+              found: true,
+              order: {
+                id: record.id,
+                customerName: `${fields.firstname} ${fields.lastname}`,
+                email: fields.email,
+                completed: Boolean(fields.completed),
+                tracking: fields.tracking || null,
+                status: fields.status || 'payment_selection',
+                matchedViaSearch: true
+              }
+            }
+          });
+        }
+      } catch (searchError) {
+        console.error('General search failed, falling back to storage search:', searchError);
+      }
+
+      // Fallback to using storage search method
+      console.log(`Airtable search failed, trying storage search for ${trackingNumber}`);
       
       const orders = await storage.getOrders({ 
         search: trackingNumber, 
-        limit: 10 
+        limit: 20 
       });
 
+      console.log(`Storage search found ${orders.length} orders`);
+
       if (orders.length > 0) {
-        const order = orders[0];
-        console.log(`Found order ${order.id} via general search for ${trackingNumber}`);
+        // Prefer orders that don't have tracking assigned yet
+        const orderWithoutTracking = orders.find(order => 
+          order.status === 'payment_selection' && 
+          !order.completed && 
+          (!order.tracking || order.tracking.trim() === '')
+        );
+
+        const order = orderWithoutTracking || orders[0];
+        console.log(`Found order ${order.id} via storage search for ${trackingNumber}`);
         
         return res.json({
           success: true,
@@ -282,15 +347,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
               email: order.email,
               completed: order.completed,
               tracking: order.tracking,
-              status: order.status
+              status: order.status,
+              needsTrackingAssignment: !order.tracking
             }
           }
         });
       }
 
-      // If still no match, look for ALL orders with payment_selection status (paid or unpaid)
+      // If still no match, look for orders that need tracking assignment
       const allOrders = await storage.getOrders({ 
-        limit: 100 // Get more orders to find matches
+        limit: 100
       });
 
       // Filter for orders that don't have tracking yet and have payment_selection status
@@ -304,7 +370,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (ordersWithoutTracking.length > 0) {
         const order = ordersWithoutTracking[0];
-        console.log(`Suggesting order ${order.id} for tracking ${trackingNumber} (paid or unpaid)`);
+        console.log(`Suggesting order ${order.id} for tracking ${trackingNumber}`);
         
         return res.json({
           success: true,
@@ -317,7 +383,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               completed: order.completed,
               tracking: order.tracking,
               status: order.status,
-              isPending: true // Flag to indicate this is a pending order suggestion
+              isPending: true,
+              needsTrackingAssignment: true
             }
           }
         });
