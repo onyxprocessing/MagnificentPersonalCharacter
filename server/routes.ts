@@ -225,40 +225,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`Scanner: Looking for tracking number: ${trackingNumber}`);
 
-      // First try to find orders by exact tracking number match in the tracking field
-      let orders = await storage.getOrders({ 
-        limit: 100  // Increase limit to search more orders
-      });
+      // Use direct Airtable search to find orders with this tracking number
+      const query = {
+        filterByFormula: `{tracking} = "${trackingNumber.trim()}"`,
+        pageSize: 10
+      };
 
-      // Filter for orders that have this exact tracking number
-      let matchingOrders = orders.filter(order => 
-        order.tracking && order.tracking.trim() === trackingNumber.trim()
-      );
+      console.log(`Searching Airtable with formula: {tracking} = "${trackingNumber.trim()}"`);
 
-      console.log(`Found ${matchingOrders.length} orders with tracking number ${trackingNumber}`);
+      // Search directly in Airtable for tracking number matches
+      const records = await airtableClient('carts').select(query).all();
+      
+      console.log(`Found ${records.length} Airtable records with tracking number ${trackingNumber}`);
 
-      if (matchingOrders.length > 0) {
-        const order = matchingOrders[0];
-        console.log(`Found order ${order.id} for customer ${order.firstname} ${order.lastname}`);
+      if (records.length > 0) {
+        const record = records[0];
+        const fields = record.fields;
+        
+        console.log(`Found order ${record.id} for customer ${fields.firstname} ${fields.lastname}`);
         
         return res.json({
           success: true,
           data: {
             found: true,
             order: {
-              id: order.id,
-              customerName: `${order.firstname} ${order.lastname}`,
-              email: order.email,
-              completed: order.completed,
-              tracking: order.tracking,
-              status: order.status
+              id: record.id,
+              customerName: `${fields.firstname} ${fields.lastname}`,
+              email: fields.email,
+              completed: Boolean(fields.completed),
+              tracking: fields.tracking,
+              status: fields.status || 'payment_selection'
             }
           }
         });
       }
 
-      // If no exact tracking match, try general search (fallback)
-      orders = await storage.getOrders({ 
+      // If no exact tracking match found, try to find by general search as fallback
+      console.log(`No exact tracking match found, trying general search for ${trackingNumber}`);
+      
+      const orders = await storage.getOrders({ 
         search: trackingNumber, 
         limit: 10 
       });
@@ -284,20 +289,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // If still no match, look for pending orders that might need this tracking number
-      orders = await storage.getOrders({ 
+      const pendingOrders = await storage.getOrders({ 
         status: 'payment_selection',
         limit: 50 
       });
 
       // Filter for orders that don't have tracking yet or need fulfillment
-      const pendingOrders = orders.filter(order => 
+      const ordersWithoutTracking = pendingOrders.filter(order => 
         !order.completed && (!order.tracking || order.tracking.trim() === '')
       );
 
-      console.log(`Found ${pendingOrders.length} pending orders without tracking`);
+      console.log(`Found ${ordersWithoutTracking.length} pending orders without tracking`);
 
-      if (pendingOrders.length > 0) {
-        const order = pendingOrders[0];
+      if (ordersWithoutTracking.length > 0) {
+        const order = ordersWithoutTracking[0];
         console.log(`Suggesting pending order ${order.id} for tracking ${trackingNumber}`);
         
         return res.json({
