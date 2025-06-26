@@ -393,46 +393,63 @@ function AffiliateDetailsModal({ affiliate }: AffiliateDetailsModalProps) {
 export default function AffiliatesPage() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
-  const [page, setPage] = useState(1);
+  const [inactivePage, setInactivePage] = useState(1);
   const [showAddModal, setShowAddModal] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const isMobile = useIsMobile();
 
-  const { data, isLoading, error, refetch } = useAffiliates({
-    page,
-    limit: 10,
+  // Fetch all active affiliates (no pagination)
+  const { data: activeData, isLoading: activeLoading, error: activeError, refetch: refetchActive } = useAffiliates({
+    page: 1,
+    limit: 1000, // Large limit to get all active affiliates
     search,
-    status,
+    status: 'active',
   });
 
-  // Sort affiliates to show active ones first, then inactive ones
-  const affiliates = (data?.data || []).sort((a, b) => {
-    const statusA = a.fields.status || 'Inactive';
-    const statusB = b.fields.status || 'Inactive';
-    
-    // Active comes before Inactive
-    if (statusA === 'Active' && statusB !== 'Active') return -1;
-    if (statusA !== 'Active' && statusB === 'Active') return 1;
-    
-    // If both have the same status, sort by name
+  // Fetch inactive affiliates with pagination
+  const { data: inactiveData, isLoading: inactiveLoading, error: inactiveError, refetch: refetchInactive } = useAffiliates({
+    page: inactivePage,
+    limit: 10,
+    search,
+    status: 'inactive',
+  });
+
+  const activeAffiliates = (activeData?.data || []).sort((a, b) => {
     const nameA = `${a.fields['First Name']} ${a.fields['Last Name']}`.toLowerCase();
     const nameB = `${b.fields['First Name']} ${b.fields['Last Name']}`.toLowerCase();
     return nameA.localeCompare(nameB);
   });
-  const pagination = data?.pagination;
+
+  const inactiveAffiliates = (inactiveData?.data || []).sort((a, b) => {
+    const nameA = `${a.fields['First Name']} ${a.fields['Last Name']}`.toLowerCase();
+    const nameB = `${b.fields['First Name']} ${b.fields['Last Name']}`.toLowerCase();
+    return nameA.localeCompare(nameB);
+  });
+
+  // Combine active and inactive affiliates for display
+  const affiliates = [...activeAffiliates, ...inactiveAffiliates];
+  const isLoading = activeLoading || inactiveLoading;
+  const error = activeError || inactiveError;
+  const inactivePagination = inactiveData?.pagination;
+  
+  // Calculate total count for stats
+  const totalActive = activeData?.pagination?.total || 0;
+  const totalInactive = inactiveData?.pagination?.total || 0;
+  const totalAffiliates = totalActive + totalInactive;
 
   const handleSearch = (value: string) => {
     setSearch(value);
-    setPage(1); // Reset to first page when searching
+    setInactivePage(1); // Reset inactive page when searching
   };
 
   const handleStatusFilter = (value: string) => {
     setStatus(value === 'all' ? '' : value);
-    setPage(1); // Reset to first page when filtering
+    setInactivePage(1); // Reset inactive page when filtering
   };
 
   const handleAffiliateCreated = () => {
-    refetch();
+    refetchActive();
+    refetchInactive();
   };
 
   if (error) {
@@ -535,8 +552,8 @@ export default function AffiliatesPage() {
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{pagination?.total || 0}</div>
-                <p className="text-xs text-muted-foreground">Active affiliate accounts</p>
+                <div className="text-2xl font-bold">{totalAffiliates}</div>
+                <p className="text-xs text-muted-foreground">{totalActive} active, {totalInactive} inactive</p>
               </CardContent>
             </Card>
           </div>
@@ -658,31 +675,31 @@ export default function AffiliatesPage() {
                     </div>
                   </div>
 
-                  {/* Pagination */}
-                  {pagination && pagination.total > pagination.limit && (
+                  {/* Pagination - only show if there are inactive affiliates to paginate */}
+                  {inactivePagination && inactivePagination.total > inactivePagination.limit && (
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4">
                       <div className="text-sm text-muted-foreground">
-                        Showing {((page - 1) * pagination.limit) + 1} to{' '}
-                        {Math.min(page * pagination.limit, pagination.total)} of{' '}
-                        {pagination.total} affiliates
+                        Showing {totalActive} active affiliates and {((inactivePage - 1) * inactivePagination.limit) + 1} to{' '}
+                        {Math.min(inactivePage * inactivePagination.limit, inactivePagination.total)} of{' '}
+                        {inactivePagination.total} inactive affiliates
                       </div>
                       <div className="flex items-center space-x-2">
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setPage(Math.max(1, page - 1))}
-                          disabled={page === 1}
+                          onClick={() => setInactivePage(Math.max(1, inactivePage - 1))}
+                          disabled={inactivePage === 1}
                         >
                           Previous
                         </Button>
                         <span className="text-sm text-muted-foreground">
-                          Page {page} of {Math.ceil(pagination.total / pagination.limit)}
+                          Page {inactivePage} of {Math.ceil(inactivePagination.total / inactivePagination.limit)}
                         </span>
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setPage(page + 1)}
-                          disabled={page >= Math.ceil(pagination.total / pagination.limit)}
+                          onClick={() => setInactivePage(inactivePage + 1)}
+                          disabled={inactivePage >= Math.ceil(inactivePagination.total / inactivePagination.limit)}
                         >
                           Next
                         </Button>
