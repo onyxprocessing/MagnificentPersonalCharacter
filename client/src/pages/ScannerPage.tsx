@@ -33,41 +33,105 @@ export default function ScannerPage() {
   // Start camera
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'environment', // Use back camera on mobile
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
-      });
+      // Check if getUserMedia is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Camera not supported on this device');
+      }
+
+      // Try multiple camera configurations for iOS compatibility
+      let stream = null;
       
-      if (videoRef.current) {
+      // First try with environment camera (back camera)
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { exact: 'environment' },
+            width: { min: 640, ideal: 1280, max: 1920 },
+            height: { min: 480, ideal: 720, max: 1080 }
+          },
+          audio: false
+        });
+      } catch (envError) {
+        console.log('Environment camera failed, trying any camera:', envError);
+        
+        // Fallback to any available camera
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              width: { min: 320, ideal: 640, max: 1280 },
+              height: { min: 240, ideal: 480, max: 720 }
+            },
+            audio: false
+          });
+        } catch (anyError) {
+          console.log('Any camera failed, trying basic constraints:', anyError);
+          
+          // Final fallback with minimal constraints
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false
+          });
+        }
+      }
+      
+      if (videoRef.current && stream) {
         videoRef.current.srcObject = stream;
+        
+        // Set video attributes for iOS
+        videoRef.current.setAttribute('playsinline', 'true');
+        videoRef.current.setAttribute('webkit-playsinline', 'true');
+        videoRef.current.muted = true;
+        videoRef.current.autoplay = true;
         
         // Wait for video to load and start playing
         videoRef.current.onloadedmetadata = () => {
-          videoRef.current?.play().then(() => {
-            setIsScanning(true);
-            toast({
-              title: "Camera Ready",
-              description: "Point camera at the tracking number on the package label",
-              variant: "default"
+          if (videoRef.current) {
+            videoRef.current.play().then(() => {
+              setIsScanning(true);
+              toast({
+                title: "Camera Ready",
+                description: "Point camera at the tracking number on the package label",
+                variant: "default"
+              });
+            }).catch((playError) => {
+              console.error('Error playing video:', playError);
+              toast({
+                title: "Camera Error",
+                description: "Could not start video playback. Try allowing camera access in your browser settings.",
+                variant: "destructive"
+              });
             });
-          }).catch((playError) => {
-            console.error('Error playing video:', playError);
-            toast({
-              title: "Camera Error",
-              description: "Could not start video playback. Please try again.",
-              variant: "destructive"
-            });
+          }
+        };
+
+        // Handle video errors
+        videoRef.current.onerror = (error) => {
+          console.error('Video element error:', error);
+          toast({
+            title: "Video Error",
+            description: "Camera video failed to load. Please try again.",
+            variant: "destructive"
           });
         };
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error accessing camera:', error);
+      
+      let errorMessage = "Could not access camera. ";
+      
+      if (error.name === 'NotAllowedError') {
+        errorMessage += "Please allow camera permissions in your browser settings.";
+      } else if (error.name === 'NotFoundError') {
+        errorMessage += "No camera found on this device.";
+      } else if (error.name === 'NotSupportedError') {
+        errorMessage += "Camera not supported on this device.";
+      } else {
+        errorMessage += "Please check permissions or use manual entry.";
+      }
+      
       toast({
         title: "Camera Error",
-        description: "Could not access camera. Please check permissions or use manual entry.",
+        description: errorMessage,
         variant: "destructive"
       });
     }
@@ -285,6 +349,9 @@ export default function ScannerPage() {
                   <Camera className="w-5 h-5" />
                   Scan Package Label
                 </CardTitle>
+                <p className="text-sm text-gray-600 mt-2">
+                  📱 On iOS: Make sure to allow camera access when prompted by your browser
+                </p>
               </CardHeader>
               <CardContent className="space-y-4">
                 
@@ -324,14 +391,22 @@ export default function ScannerPage() {
                       autoPlay
                       playsInline
                       muted
-                      webkit-playsinline="true"
-                      className="w-full h-64 bg-black rounded-lg object-cover"
-                      style={{ transform: 'scaleX(-1)' }}
+                      controls={false}
+                      className="w-full h-64 sm:h-80 bg-black rounded-lg object-cover"
+                      style={{ 
+                        transform: 'scaleX(-1)',
+                        WebkitTransform: 'scaleX(-1)'
+                      }}
                     />
                     <div className="absolute inset-0 border-2 border-blue-500 border-dashed rounded-lg pointer-events-none">
                       <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-16 border-2 border-blue-500 rounded bg-blue-500/10">
                         <div className="text-center text-xs text-blue-600 mt-6">Focus tracking number here</div>
                       </div>
+                    </div>
+                    
+                    {/* iOS Camera Instructions */}
+                    <div className="absolute bottom-2 left-2 right-2 bg-black/50 text-white text-xs p-2 rounded">
+                      📱 iOS: Make sure to allow camera access when prompted
                     </div>
                   </div>
                 )}
