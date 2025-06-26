@@ -527,12 +527,16 @@ export default function ScannerPage() {
     setIsProcessing(true);
 
     try {
+      console.log('Processing tracking number:', trackingNumber.trim());
+      
       // Use the dedicated scanner endpoint for tracking number lookup
       const response = await apiRequest('POST', '/api/scanner/process-tracking', {
         trackingNumber: trackingNumber.trim()
       });
 
-      if (response.success && response.data.found) {
+      console.log('Scanner API response:', response);
+
+      if (response.success && response.data && response.data.found) {
         const order = response.data.order;
 
         // Check if already fulfilled
@@ -619,9 +623,19 @@ export default function ScannerPage() {
       }
     } catch (error) {
       console.error('Error processing tracking number:', error);
+      
+      // Check if the error has a meaningful message
+      let errorMessage = "Error processing the tracking number. Please try again.";
+      
+      if (error && typeof error === 'object' && 'message' in error) {
+        errorMessage = error.message as string;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
       toast({
         title: "Processing Error",
-        description: "Error processing the tracking number. Please try again.",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
