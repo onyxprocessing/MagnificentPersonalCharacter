@@ -7,53 +7,48 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
-export async function apiRequest(
-  methodOrUrl: string,
-  urlOrData?: string | unknown,
-  data?: unknown | undefined
-): Promise<Response> {
-  // Handle the case where only URL is passed
-  let method: string = 'GET';
-  let url: string = '';
-  let payload: unknown | undefined = undefined;
-  
-  // If first parameter doesn't look like a HTTP method, treat it as the URL
-  if (!['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(methodOrUrl.toUpperCase())) {
-    url = methodOrUrl; // First param is the URL
-    payload = urlOrData as unknown; // Second param is the data
-  } else {
-    method = methodOrUrl; // First param is the method
-    url = urlOrData as string; // Second param is the URL
-    payload = data; // Third param is the data
-  }
-  
-  console.log("API Request:", method, url, payload);
-  
-  // Safety check for URL
-  if (typeof url !== 'string') {
-    console.error('URL is not a string:', url);
-    throw new Error('Invalid URL');
-  }
-  
-  // Make sure the URL starts with / or http
-  if (url && typeof url === 'string' && !url.startsWith('/') && !url.startsWith('http')) {
-    url = '/' + url;
-  }
-  
-  const res = await fetch(url, {
-    method,
-    headers: payload ? { "Content-Type": "application/json" } : {},
-    body: payload ? JSON.stringify(payload) : undefined,
-    credentials: "include",
-  });
+export async function apiRequest(method: string, url: string, data?: any) {
+  console.log('API Request:', method, url, data);
 
-  // Don't throw error for auth endpoints, let the caller handle it
-  if (url && url.includes && url.includes('/api/auth/login')) {
-    return res;
+  try {
+    const response = await fetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: data ? JSON.stringify(data) : undefined,
+    });
+
+    console.log('Response status:', response.status);
+    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Response error text:', errorText);
+      throw new Error(errorText || `Request failed with status ${response.status}`);
+    }
+
+    const responseText = await response.text();
+    console.log('Raw response text:', responseText);
+
+    if (!responseText) {
+      console.warn('Empty response received');
+      return {};
+    }
+
+    try {
+      const jsonData = JSON.parse(responseText);
+      console.log('Parsed JSON:', jsonData);
+      return jsonData;
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      console.error('Response text that failed to parse:', responseText);
+      throw new Error('Invalid JSON response from server');
+    }
+  } catch (error) {
+    console.error('API Request failed:', error);
+    throw error;
   }
-  
-  await throwIfResNotOk(res);
-  return res;
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
