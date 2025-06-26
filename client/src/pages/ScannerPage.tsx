@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Camera, Package, CheckCircle, XCircle, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -40,7 +39,7 @@ export default function ScannerPage() {
 
       // Try multiple camera configurations for iOS compatibility
       let stream = null;
-      
+
       // First try with environment camera (back camera)
       try {
         stream = await navigator.mediaDevices.getUserMedia({
@@ -53,7 +52,7 @@ export default function ScannerPage() {
         });
       } catch (envError) {
         console.log('Environment camera failed, trying any camera:', envError);
-        
+
         // Fallback to any available camera
         try {
           stream = await navigator.mediaDevices.getUserMedia({
@@ -65,7 +64,7 @@ export default function ScannerPage() {
           });
         } catch (anyError) {
           console.log('Any camera failed, trying basic constraints:', anyError);
-          
+
           // Final fallback with minimal constraints
           stream = await navigator.mediaDevices.getUserMedia({
             video: true,
@@ -73,16 +72,16 @@ export default function ScannerPage() {
           });
         }
       }
-      
+
       if (videoRef.current && stream) {
         videoRef.current.srcObject = stream;
-        
+
         // Set video attributes for iOS
         videoRef.current.setAttribute('playsinline', 'true');
         videoRef.current.setAttribute('webkit-playsinline', 'true');
         videoRef.current.muted = true;
         videoRef.current.autoplay = true;
-        
+
         // Wait for video to load and start playing
         videoRef.current.onloadedmetadata = () => {
           if (videoRef.current) {
@@ -116,9 +115,9 @@ export default function ScannerPage() {
       }
     } catch (error: any) {
       console.error('Error accessing camera:', error);
-      
+
       let errorMessage = "Could not access camera. ";
-      
+
       if (error.name === 'NotAllowedError') {
         errorMessage += "Please allow camera permissions in your browser settings.";
       } else if (error.name === 'NotFoundError') {
@@ -128,7 +127,7 @@ export default function ScannerPage() {
       } else {
         errorMessage += "Please check permissions or use manual entry.";
       }
-      
+
       toast({
         title: "Camera Error",
         description: errorMessage,
@@ -166,7 +165,7 @@ export default function ScannerPage() {
 
     // Convert to base64 for processing
     const imageData = canvas.toDataURL('image/jpeg', 0.8);
-    
+
     // Process the image to extract tracking number
     await processImage(imageData);
   };
@@ -174,18 +173,18 @@ export default function ScannerPage() {
   // Process image to extract tracking number using OCR-like logic
   const processImage = async (imageData: string) => {
     setIsProcessing(true);
-    
+
     try {
       // For now, we'll simulate OCR by looking for common tracking number patterns
       // In a real implementation, you could use services like Tesseract.js or Google Vision API
-      
+
       // Common tracking number patterns:
       // USPS: 9400 1234 5678 9012 3456 78, 9205 5901 2345 1234 5678 90
       // UPS: 1Z999AA1234567890
       // FedEx: 1234 5678 9012, 9612 0123 4567 8901 2345 67
-      
+
       const trackingNumber = await extractTrackingFromImage(imageData);
-      
+
       if (trackingNumber) {
         await processTrackingNumber(trackingNumber);
       } else {
@@ -216,7 +215,7 @@ export default function ScannerPage() {
     // - Google Vision API
     // - AWS Textract
     // - Azure Computer Vision
-    
+
     return null; // Placeholder - would implement actual OCR here
   };
 
@@ -225,14 +224,14 @@ export default function ScannerPage() {
     if (!trackingNumber.trim()) return;
 
     setIsProcessing(true);
-    
+
     try {
       // Search for orders with this tracking number or try to match it to pending orders
       const response = await apiRequest('GET', `/api/orders?search=${trackingNumber}`);
-      
+
       if (response.success && response.data.length > 0) {
         const order = response.data[0];
-        
+
         // Check if already fulfilled
         if (order.completed) {
           addScannedPackage({
@@ -242,7 +241,7 @@ export default function ScannerPage() {
             status: 'already_fulfilled',
             timestamp: new Date()
           });
-          
+
           toast({
             title: "Already Fulfilled",
             description: `Order for ${order.firstname} ${order.lastname} is already marked as fulfilled.`,
@@ -273,7 +272,7 @@ export default function ScannerPage() {
           description: `Successfully marked order for ${order.firstname} ${order.lastname} as fulfilled.`,
           variant: "default"
         });
-        
+
       } else {
         // Try to find by customer name or other details if tracking search fails
         addScannedPackage({
@@ -325,23 +324,23 @@ export default function ScannerPage() {
     <div className="flex h-screen bg-background">
       {/* Sidebar for desktop */}
       <Sidebar />
-      
+
       {/* Mobile Sidebar */}
       <MobileSidebar 
         isOpen={isMobileSidebarOpen} 
         onClose={() => setIsMobileSidebarOpen(false)} 
       />
-      
+
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header 
           onToggleMobileMenu={() => setIsMobileSidebarOpen(true)}
           title="Package Scanner"
         />
-        
+
         <main className="flex-1 overflow-y-auto bg-background p-4">
           <div className="max-w-2xl mx-auto space-y-6">
-            
+
             {/* Scanner Card */}
             <Card>
               <CardHeader>
@@ -354,7 +353,7 @@ export default function ScannerPage() {
                 </p>
               </CardHeader>
               <CardContent className="space-y-4">
-                
+
                 {/* Camera Status */}
                 {isScanning && (
                   <div className="flex items-center justify-center gap-2 p-2 bg-green-50 border border-green-200 rounded-lg">
@@ -364,25 +363,30 @@ export default function ScannerPage() {
                 )}
 
                 {/* Camera Controls */}
-                <div className="flex gap-2">
+                
+                <div className="flex flex-col gap-2">
                   {!isScanning ? (
-                    <Button onClick={startCamera} className="flex-1">
-                      <Camera className="w-4 h-4 mr-2" />
-                      Start Camera
+                    <Button onClick={startCamera} className="w-full h-12 text-lg">
+                      <Camera className="w-5 h-5 mr-2" />
+                      📱 Start Camera
                     </Button>
                   ) : (
-                    <>
-                      <Button onClick={captureImage} disabled={isProcessing} className="flex-1">
-                        <Package className="w-4 h-4 mr-2" />
-                        {isProcessing ? 'Processing...' : 'Scan Label'}
+                    <div className="flex gap-2">
+                      <Button 
+                        onClick={captureImage} 
+                        disabled={isProcessing} 
+                        className="flex-1 h-12 text-lg bg-blue-600 hover:bg-blue-700"
+                      >
+                        <Package className="w-5 h-5 mr-2" />
+                        {isProcessing ? '🔄 Processing...' : '📸 Take Picture'}
                       </Button>
-                      <Button variant="outline" onClick={stopCamera}>
+                      <Button variant="outline" onClick={stopCamera} className="h-12">
                         Stop
                       </Button>
-                    </>
+                    </div>
                   )}
                 </div>
-
+                
                 {/* Camera Preview */}
                 {isScanning && (
                   <div className="relative">
@@ -403,7 +407,7 @@ export default function ScannerPage() {
                         <div className="text-center text-xs text-blue-600 mt-6">Focus tracking number here</div>
                       </div>
                     </div>
-                    
+
                     {/* iOS Camera Instructions */}
                     <div className="absolute bottom-2 left-2 right-2 bg-black/50 text-white text-xs p-2 rounded">
                       📱 iOS: Make sure to allow camera access when prompted
