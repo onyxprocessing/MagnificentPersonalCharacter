@@ -344,22 +344,116 @@ export default function ScannerPage() {
     }
   };
 
-  // Extract tracking number from image using Tesseract.js OCR
+  // Extract tracking number from image using Google Cloud Vision API
   const extractTrackingFromImage = async (imageData: string): Promise<string | null> => {
     try {
+      console.log('Starting Google Cloud Vision OCR processing...');
+      
+      // Convert base64 to blob for the API call
+      const base64Data = imageData.split(',')[1]; // Remove data:image/jpeg;base64, prefix
+      
+      // Call our backend API endpoint for Google Cloud Vision
+      const response = await fetch('/api/ocr/google-vision', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          imageData: base64Data
+        })
+      });
+      
+      if (!response.ok) {
+        console.error('Google Vision API call failed:', response.status);
+        // Fallback to Tesseract.js if Google Vision fails
+        return await extractTrackingFromImageTesseract(imageData);
+      }
+      
+      const result = await response.json();
+      console.log('Google Vision OCR Raw Text:', result.text);
+      
+      if (!result.text) {
+        console.log('No text detected by Google Vision, trying Tesseract fallback');
+        return await extractTrackingFromImageTesseract(imageData);
+      }
+      
+      // Extract tracking numbers using common patterns
+      const trackingPatterns = [
+        // USPS patterns
+        /\b94\d{20}\b/g,                    // 9400 series (22 digits)
+        /\b92\d{20}\b/g,                    // 9200 series (22 digits)
+        /\b93\d{20}\b/g,                    // 9300 series (22 digits)
+        /\b82\d{8}\b/g,                     // Certified Mail
+        /\b70\d{14}\b/g,                    // Express Mail
+        
+        // UPS patterns
+        /\b1Z[A-Z0-9]{16}\b/g,              // Standard UPS format
+        
+        // FedEx patterns
+        /\b\d{12}\b/g,                      // 12 digit FedEx
+        /\b\d{14}\b/g,                      // 14 digit FedEx
+        /\b\d{20}\b/g,                      // 20 digit FedEx
+        
+        // DHL patterns
+        /\b\d{10,11}\b/g,                   // 10-11 digit DHL
+        
+        // General long number patterns (fallback)
+        /\b\d{15,22}\b/g                    // Any 15-22 digit number
+      ];
+      
+      const cleanText = result.text.replace(/\s+/g, ' ').trim();
+      
+      for (const pattern of trackingPatterns) {
+        const matches = cleanText.match(pattern);
+        if (matches && matches.length > 0) {
+          const trackingNumber = matches[0].replace(/\s/g, '');
+          console.log('Found tracking number via Google Vision:', trackingNumber);
+          return trackingNumber;
+        }
+      }
+      
+      // Try looking for patterns with spaces or dashes
+      const spacedPatterns = [
+        /\b94\d{2}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{2}\b/g,
+        /\b92\d{2}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{2}\b/g,
+        /\b1Z\s?[A-Z0-9]{3}\s?[A-Z0-9]{3}\s?[A-Z0-9]{10}\b/g
+      ];
+      
+      for (const pattern of spacedPatterns) {
+        const matches = cleanText.match(pattern);
+        if (matches && matches.length > 0) {
+          const trackingNumber = matches[0].replace(/[\s-]/g, '');
+          console.log('Found spaced tracking number via Google Vision:', trackingNumber);
+          return trackingNumber;
+        }
+      }
+      
+      console.log('No tracking number patterns found in Google Vision text, trying Tesseract fallback');
+      return await extractTrackingFromImageTesseract(imageData);
+      
+    } catch (error) {
+      console.error('Google Vision OCR Error:', error);
+      // Fallback to Tesseract.js if Google Vision fails
+      return await extractTrackingFromImageTesseract(imageData);
+    }
+  };
+
+  // Fallback Tesseract.js OCR function
+  const extractTrackingFromImageTesseract = async (imageData: string): Promise<string | null> => {
+    try {
+      console.log('Falling back to Tesseract.js OCR...');
+      
       // Dynamic import to avoid loading Tesseract unless needed
       const Tesseract = await import('tesseract.js');
       
-      console.log('Starting OCR processing...');
-      
       // Configure Tesseract for better tracking number recognition
       const { data: { text } } = await Tesseract.recognize(imageData, 'eng', {
-        logger: m => console.log('OCR Progress:', m),
+        logger: m => console.log('Tesseract Progress:', m),
         tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ ',
         tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT
       });
       
-      console.log('OCR Raw Text:', text);
+      console.log('Tesseract OCR Raw Text:', text);
       
       // Extract tracking numbers using common patterns
       const trackingPatterns = [
@@ -391,7 +485,7 @@ export default function ScannerPage() {
         const matches = cleanText.match(pattern);
         if (matches && matches.length > 0) {
           const trackingNumber = matches[0].replace(/\s/g, '');
-          console.log('Found tracking number:', trackingNumber);
+          console.log('Found tracking number via Tesseract:', trackingNumber);
           return trackingNumber;
         }
       }
@@ -407,16 +501,16 @@ export default function ScannerPage() {
         const matches = cleanText.match(pattern);
         if (matches && matches.length > 0) {
           const trackingNumber = matches[0].replace(/[\s-]/g, '');
-          console.log('Found spaced tracking number:', trackingNumber);
+          console.log('Found spaced tracking number via Tesseract:', trackingNumber);
           return trackingNumber;
         }
       }
       
-      console.log('No tracking number patterns found in OCR text');
+      console.log('No tracking number patterns found in Tesseract text');
       return null;
       
     } catch (error) {
-      console.error('OCR Error:', error);
+      console.error('Tesseract OCR Error:', error);
       return null;
     }
   };

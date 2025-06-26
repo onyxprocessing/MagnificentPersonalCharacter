@@ -6,6 +6,11 @@ import cors from "cors";
 import { z } from "zod";
 import rateLimit from "express-rate-limit";
 import Stripe from "stripe";
+import { apiRequest } from '../shared/schema';
+import { db } from './storage';
+import { airtableClient } from './storage';
+import type { Request, Response } from 'express';
+import { createShippingLabel } from './easypost';
 
 // Initialize Stripe with secret key from environment variable
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
@@ -41,13 +46,13 @@ function checkOrderSimulatedPayment(order: any): boolean {
       return true;
     }
   }
-  
+
   // Check if total is a reasonable value (not $0 or negative)
   const total = parseFloat(order.total || '0');
   if (total > 0) {
     return true;
   }
-  
+
   return false;
 }
 
@@ -68,7 +73,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth endpoints
   app.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body;
-    
+
     console.log('Login attempt:', email, password);
 
     // Always allow login with hardcoded credentials
@@ -97,16 +102,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { page = '1', limit = '10', status, search } = req.query;
       const pageNum = parseInt(page as string);
       const limitNum = parseInt(limit as string);
-      
+
       const orders = await storage.getOrders({
         page: pageNum,
         limit: limitNum,
         status: status as string,
         search: search as string
       });
-      
+
       const total = await storage.getOrdersCount(status as string, search as string);
-      
+
       res.json({
         success: true,
         data: orders,
@@ -129,14 +134,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const order = await storage.getOrderById(id);
-      
+
       if (!order) {
         return res.status(404).json({
           success: false,
           message: 'Order not found'
         });
       }
-      
+
       res.json({
         success: true,
         data: order
@@ -154,9 +159,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const updates = req.body;
-      
+
       const updatedOrder = await storage.updateOrder(id, updates);
-      
+
       res.json({
         success: true,
         data: updatedOrder
@@ -175,11 +180,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const { completed, partial } = req.body;
-      
+
       console.log(`Updating fulfillment for order ${id}:`, { completed, partial });
-      
+
       const updatedOrder = await storage.updateOrder(id, { completed, partial });
-      
+
       if (updatedOrder) {
         res.json({ 
           success: true, 
@@ -205,7 +210,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/scanner/process-tracking', async (req, res) => {
     try {
       const { trackingNumber } = req.body;
-      
+
       if (!trackingNumber) {
         return res.status(400).json({
           success: false,
@@ -225,7 +230,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           status: 'payment_selection',
           limit: 50 
         });
-        
+
         // Filter for orders that don't have tracking yet or need fulfillment
         orders = orders.filter(order => 
           !order.completed && (!order.tracking || order.tracking.trim() === '')
@@ -244,7 +249,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // If we found orders, return the first one for fulfillment
       const order = orders[0];
-      
+
       res.json({
         success: true,
         data: {
@@ -258,7 +263,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
       });
-      
+
     } catch (error) {
       console.error('Error processing tracking number:', error);
       res.status(500).json({
@@ -274,15 +279,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { page = '1', limit = '10', category } = req.query;
       const pageNum = parseInt(page as string);
       const limitNum = parseInt(limit as string);
-      
+
       const products = await storage.getProducts({
         page: pageNum,
         limit: limitNum,
         category: category as string
       });
-      
+
       const total = await storage.getProductsCount(category as string);
-      
+
       res.json({
         success: true,
         data: products,
@@ -305,17 +310,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const product = await storage.getProductById(parseInt(id));
-      
+
       if (!product) {
         return res.status(404).json({
           success: false,
           message: 'Product not found'
         });
       }
-      
+
       // Get product sales data
       const salesData = await storage.getProductSalesData(parseInt(id));
-      
+
       res.json({
         success: true,
         data: {
@@ -344,14 +349,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const updates = req.body;
-      
+
       // Remove categoryId/category from the updates to avoid Airtable validation errors
       const safeUpdates = { ...updates };
       delete safeUpdates.category;
       delete safeUpdates.categoryId;
-      
+
       const updatedProduct = await storage.updateProduct(parseInt(id), safeUpdates);
-      
+
       res.json({
         success: true,
         data: updatedProduct
@@ -369,7 +374,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       await storage.deleteProduct(parseInt(id));
-      
+
       res.json({
         success: true,
         message: 'Product deleted successfully'
@@ -388,21 +393,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const order = await storage.getOrderById(id);
-      
+
       if (!order) {
         return res.status(404).json({
           success: false,
           message: 'Order not found'
         });
       }
-      
+
       // If the order has a Stripe payment ID, use that directly
       if (order.stripePaymentId) {
         try {
           const payment = await stripe.paymentIntents.retrieve(order.stripePaymentId);
-          
+
           const paymentVerified = payment.status === 'succeeded';
-          
+
           return res.json({
             success: true,
             data: {
@@ -420,11 +425,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error('Stripe error when retrieving by ID:', stripeError);
         }
       }
-      
+
       // If we don't have a payment ID or couldn't find the payment, try searching by customer details
       const customerName = `${order.firstname} ${order.lastname}`.trim().toLowerCase();
       const customerEmail = order.email?.toLowerCase();
-      
+
       if (!customerName && !customerEmail) {
         return res.json({
           success: true,
@@ -434,15 +439,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         });
       }
-      
+
       // First search specifically by email as it's more precise
       const searchMethod = customerEmail ? 'email' : 'name';
       console.log(`Searching Stripe payments for customer by ${searchMethod}: ${customerEmail || customerName}`);
-      
+
       try {
         let matchingPayment = null;
         let stripeLookupFailed = false;
-        
+
         try {
           // If we have an email, try to search for customers first (more accurate)
           if (customerEmail) {
@@ -452,17 +457,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 email: customerEmail,
                 limit: 5
               });
-              
+
               if (customers.data.length > 0) {
                 // Get the customer ID and search payments by this customer
                 const customerId = customers.data[0].id;
                 console.log(`Found Stripe customer with ID ${customerId} for email ${customerEmail}`);
-                
+
                 const customerPayments = await stripe.paymentIntents.list({
                   customer: customerId,
                   limit: 5
                 });
-                
+
                 if (customerPayments.data.length > 0) {
                   matchingPayment = customerPayments.data[0]; // Use the most recent payment
                   console.log(`Found payment by customer ID: ${matchingPayment.id}`);
@@ -475,47 +480,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
               // Continue to generic search
             }
           }
-          
+
           // If we didn't find a payment by customer ID, try searching payments directly
           if (!matchingPayment) {
             // Get recent payments from Stripe (increased limit to find older payments)
             const payments = await stripe.paymentIntents.list({
               limit: 100
             });
-            
+
             // Only search for payments with exact email match AND successful status
             let matchingPayments: any[] = [];
-            
+
             if (customerEmail) {
               // Check each payment for exact email match
               for (const payment of payments.data) {
                 let emailMatch = false;
-                
+
                 // Check receipt email for exact match
                 if (payment.receipt_email === customerEmail) {
                   emailMatch = true;
                 }
-                
+
                 // Only include payments with exact email match AND successful status
                 if (emailMatch && payment.status === 'succeeded') {
                   matchingPayments.push(payment);
                 }
               }
             }
-            
+
             console.log(`Found ${matchingPayments.length} matching payments for ${customerEmail || customerName}`);
-            
+
             // First check for multiple payments from the same customer
             if (matchingPayments.length > 1) {
               console.log(`Multiple payments (${matchingPayments.length}) found for customer ${customerEmail || customerName}`);
-              
+
               // Check for any successful payment among those found
               const successfulPayment = matchingPayments.find(payment => payment.status === 'succeeded');
-              
+
               if (successfulPayment) {
                 console.log(`Found successful payment: ${successfulPayment.id} among multiple attempts`);
                 matchingPayment = successfulPayment;
-                
+
                 // Log other payment attempts
                 matchingPayments
                   .filter(p => p.id !== successfulPayment.id)
@@ -539,30 +544,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error('Stripe API error, falling back to simulated payment check:', error.message);
           stripeLookupFailed = true;
         }
-        
+
         // Only use real Stripe payments - no simulated payments
         if (!matchingPayment) {
           console.log(`No valid payment found for ${order.email || order.firstname} ${order.lastname}`);
         }
-        
+
         if (matchingPayment) {
           const paymentVerified = matchingPayment.status === 'succeeded';
-          
+
           // Cache the payment status for sorting
           paymentStatusCache.set(id, paymentVerified);
-          
+
           // Create a clear message that indicates payment status
           let statusMessage = paymentVerified 
             ? 'Payment Verified: Transaction was successful' 
             : `Payment Found but Status is: ${matchingPayment.status}`;
-            
+
           // Remove simulated payment logic - only use real Stripe payments
-          
+
           // Add details about checking multiple transactions if applicable
           if (typeof matchingPayments !== 'undefined' && matchingPayments.length > 1) {
             statusMessage += ` (${matchingPayments.length} transactions found for this customer)`;
           }
-          
+
           return res.json({
             success: true,
             data: {
@@ -605,12 +610,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
-  
+
   // Dashboard endpoints
   app.get('/api/dashboard/stats', async (req, res) => {
     try {
       const stats = await storage.getDashboardStats();
-      
+
       res.json({
         success: true,
         data: stats
@@ -627,7 +632,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/dashboard/sales', async (req, res) => {
     try {
       const salesData = await storage.getSalesData();
-      
+
       res.json({
         success: true,
         data: salesData
@@ -644,7 +649,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/dashboard/popular-products', async (req, res) => {
     try {
       const popularProducts = await storage.getPopularProducts();
-      
+
       res.json({
         success: true,
         data: popularProducts
@@ -657,7 +662,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
-  
+
   // Get customers with order info
   app.get('/api/customers', async (req, res) => {
     try {
@@ -665,33 +670,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
       const search = (req.query.search as string) || '';
-      
+
       console.log('Fetching customers with params:', { page, limit, search });
-      
+
       // Get all orders to extract customer information
       const orders = await storage.getOrders({ limit: 1000 });
       console.log(`Got ${orders.length} orders to extract customer info from`);
-      
+
       // Create a map to store unique customers
       const customerMap = new Map();
-      
+
       // Process orders to extract customer data
       for (const order of orders) {
         // Skip orders without essential customer info
         if (!order.email) continue;
-        
+
         const customerId = order.email.toLowerCase();
-        
+
         // Calculate order total
         const orderTotal = parseFloat(order.total || '0');
         const orderDate = order.createdAt || new Date();
-        
+
         if (customerMap.has(customerId)) {
           // Update existing customer info
           const customer = customerMap.get(customerId);
           customer.totalOrders += 1;
           customer.totalSpent += orderTotal;
-          
+
           // Add order to customer's orders list
           customer.orders.push({
             id: order.id,
@@ -701,12 +706,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             createdAt: orderDate,
             affiliateCode: order.affiliateCode || null
           });
-          
+
           // Track unique affiliate codes used by this customer
           if (order.affiliateCode && !customer.affiliateCodes.includes(order.affiliateCode)) {
             customer.affiliateCodes.push(order.affiliateCode);
           }
-          
+
           // Update last order date if this order is newer
           if (orderDate > customer.lastOrderDate) {
             customer.lastOrderDate = orderDate;
@@ -739,11 +744,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
       }
-      
+
       // Convert map to array
       let customers = Array.from(customerMap.values());
       console.log(`Extracted ${customers.length} unique customers`);
-      
+
       // Apply search filter if provided
       if (search) {
         const searchLower = search.toLowerCase();
@@ -753,7 +758,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const lastname = String(customer.lastname || '');
           const email = String(customer.email || '');
           const phone = String(customer.phone || '');
-          
+
           return firstname.toLowerCase().includes(searchLower) ||
                  lastname.toLowerCase().includes(searchLower) ||
                  email.toLowerCase().includes(searchLower) ||
@@ -761,21 +766,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         console.log(`Filtered to ${customers.length} customers after search`);
       }
-      
+
       // Sort by most recent order date
       customers.sort((a, b) => {
         const dateA = a.lastOrderDate instanceof Date ? a.lastOrderDate.getTime() : 0;
         const dateB = b.lastOrderDate instanceof Date ? b.lastOrderDate.getTime() : 0;
         return dateB - dateA;
       });
-      
+
       // Calculate pagination
       const startIndex = (page - 1) * limit;
       const endIndex = startIndex + limit;
       const paginatedCustomers = customers.slice(startIndex, endIndex);
-      
+
       console.log(`Returning ${paginatedCustomers.length} customers (page ${page}, limit ${limit})`);
-      
+
       // Return the customers data with pagination
       res.json({
         success: true,
@@ -800,7 +805,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const order = await storage.getOrderById(id);
-      
+
       if (!order) {
         return res.status(404).json({
           success: false,
@@ -809,11 +814,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const emailSent = await emailService.sendOrderConfirmation(order);
-      
+
       if (emailSent) {
         // Update the order to mark confirmation email as sent
         await storage.updateOrder(id, { confirmationEmailSent: true });
-        
+
         res.json({
           success: true,
           message: 'Confirmation email sent successfully'
@@ -837,7 +842,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const order = await storage.getOrderById(id);
-      
+
       if (!order) {
         return res.status(404).json({
           success: false,
@@ -846,11 +851,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const emailSent = await emailService.sendShippingNotification(order);
-      
+
       if (emailSent) {
         // Update the order to mark shipping email as sent
         await storage.updateOrder(id, { shippingEmailSent: true });
-        
+
         res.json({
           success: true,
           message: 'Shipping notification sent successfully'
@@ -875,7 +880,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const { serviceType = 'Priority' } = req.body;
-      
+
       const order = await storage.getOrderById(id);
       if (!order) {
         return res.status(404).json({
@@ -885,15 +890,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { easyPostService } = await import('./easypost');
-      
+
       // Parse cart items to determine package specs
       const cartItems = order.cartItems && Array.isArray(order.cartItems) 
         ? order.cartItems 
         : (order.cartitems ? JSON.parse(order.cartitems) : []);
-      
+
       const itemCount = cartItems.reduce((total: number, item: any) => total + (item.quantity || 1), 0);
       const packageSpecs = easyPostService.getPackageSpecs(itemCount);
-      
+
       const toAddress = {
         name: `${order.firstname} ${order.lastname}`,
         address: order.address || '',
@@ -904,7 +909,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const fromAddress = easyPostService.getDefaultFromAddress();
-      
+
       // Validate customer address first
       const addressValid = await easyPostService.validateAddress(toAddress);
       if (!addressValid) {
@@ -925,7 +930,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const labelResponse = await easyPostService.createShippingLabel(labelRequest);
-      
+
       // Update order with tracking number and shipping info
       await storage.updateOrder(id, {
         trackingNumber: labelResponse.trackingNumber,
@@ -956,7 +961,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const order = await storage.getOrderById(id);
-      
+
       if (!order || !order.trackingNumber) {
         return res.status(404).json({
           success: false,
@@ -966,7 +971,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { easyPostService } = await import('./easypost');
       const trackingInfo = await easyPostService.getTrackingInfo(order.trackingNumber);
-      
+
       res.json({
         success: true,
         data: trackingInfo
@@ -984,9 +989,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { address } = req.body;
       const { easyPostService } = await import('./easypost');
-      
+
       const isValid = await easyPostService.validateAddress(address);
-      
+
       res.json({
         success: true,
         data: { valid: isValid }
@@ -1004,7 +1009,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/create-payment-intent', async (req, res) => {
     try {
       const { amount, orderId, customerEmail, metadata = {} } = req.body;
-      
+
       if (!amount || isNaN(parseFloat(amount))) {
         return res.status(400).json({ 
           success: false,
@@ -1017,8 +1022,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (orderId) {
         try {
           order = await storage.getOrderById(orderId);
-        } catch (orderLookupError) {
-          console.warn('Could not find order details for payment:', orderLookupError);
+        } catch (orderLookupError) {          console.warn('Could not find order details for payment:', orderLookupError);
           // Continue without order details - not a fatal error
         }
       }
@@ -1068,7 +1072,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/affiliates', async (req, res) => {
     try {
       const { page = 1, limit = 10, search, status } = req.query;
-      
+
       const { fetchAffiliates } = await import('../client/src/lib/airtable');
       const result = await fetchAffiliates({
         page: parseInt(page as string),
@@ -1076,7 +1080,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         search: search as string,
         status: status as string,
       });
-      
+
       res.json({
         success: true,
         data: result.records,
@@ -1099,13 +1103,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { code } = req.params;
       const { page = 1, limit = 10 } = req.query;
-      
+
       const { fetchOrdersByAffiliateCode } = await import('../client/src/lib/airtable');
       const result = await fetchOrdersByAffiliateCode(code, {
         page: parseInt(page as string),
         limit: parseInt(limit as string),
       });
-      
+
       res.json({
         success: true,
         data: result.records,
@@ -1127,10 +1131,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/affiliates/:code/stats', async (req, res) => {
     try {
       const { code } = req.params;
-      
+
       const { getAffiliateStats } = await import('../client/src/lib/airtable');
       const stats = await getAffiliateStats(code);
-      
+
       res.json({
         success: true,
         data: stats,
@@ -1147,10 +1151,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/affiliates', async (req, res) => {
     try {
       const affiliateData = req.body;
-      
+
       const { createAffiliate } = await import('../client/src/lib/airtable');
       const newAffiliate = await createAffiliate(affiliateData);
-      
+
       res.json({
         success: true,
         data: newAffiliate,
@@ -1163,7 +1167,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
-  
+
+  // Health check endpoint
+  app.get('/api/health', (_req: Request, res: Response) => {
+    res.json({ success: true, message: 'API is healthy', timestamp: new Date().toISOString() });
+  });
+
+  // Google Cloud Vision OCR endpoint
+  app.post('/api/ocr/google-vision', async (req: Request, res: Response) => {
+    try {
+      const { imageData } = req.body;
+
+      if (!imageData) {
+        return res.status(400).json({ success: false, error: 'No image data provided' });
+      }
+
+      const apiKey = process.env.GOOGLE_CLOUD_VISION_API_KEY;
+      if (!apiKey) {
+        console.error('Google Cloud Vision API key not found in environment variables');
+        return res.status(500).json({ success: false, error: 'OCR service not configured' });
+      }
+
+      // Call Google Cloud Vision API
+      const visionResponse = await fetch(
+        `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            requests: [
+              {
+                image: {
+                  content: imageData
+                },
+                features: [
+                  {
+                    type: 'TEXT_DETECTION',
+                    maxResults: 50
+                  }
+                ],
+                imageContext: {
+                  textDetectionParams: {
+                    enableTextDetectionConfidenceScore: true
+                  }
+                }
+              }
+            ]
+          })
+        }
+      );
+
+      if (!visionResponse.ok) {
+        const errorData = await visionResponse.text();
+        console.error('Google Vision API error:', errorData);
+        return res.status(500).json({ success: false, error: 'OCR processing failed' });
+      }
+
+      const visionResult = await visionResponse.json();
+
+      if (visionResult.responses && visionResult.responses[0] && visionResult.responses[0].textAnnotations) {
+        const detectedText = visionResult.responses[0].textAnnotations[0]?.description || '';
+        console.log('Google Vision detected text:', detectedText);
+
+        return res.json({ 
+          success: true, 
+          text: detectedText,
+          confidence: visionResult.responses[0].textAnnotations[0]?.confidence || 0
+        });
+      } else {
+        console.log('No text detected by Google Vision');
+        return res.json({ success: true, text: '', confidence: 0 });
+      }
+
+    } catch (error) {
+      console.error('Google Vision OCR error:', error);
+      res.status(500).json({ success: false, error: 'OCR processing failed' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
