@@ -201,6 +201,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Scanner endpoint for tracking number lookup
+  app.post('/api/scanner/process-tracking', async (req, res) => {
+    try {
+      const { trackingNumber } = req.body;
+      
+      if (!trackingNumber) {
+        return res.status(400).json({
+          success: false,
+          message: 'Tracking number is required'
+        });
+      }
+
+      // First try to find order by exact tracking number match
+      let orders = await storage.getOrders({ 
+        search: trackingNumber, 
+        limit: 10 
+      });
+
+      // If no exact match, try to find pending orders that might match this tracking
+      if (orders.length === 0) {
+        orders = await storage.getOrders({ 
+          status: 'payment_selection',
+          limit: 50 
+        });
+        
+        // Filter for orders that don't have tracking yet or need fulfillment
+        orders = orders.filter(order => 
+          !order.completed && (!order.tracking || order.tracking.trim() === '')
+        );
+      }
+
+      if (orders.length === 0) {
+        return res.json({
+          success: true,
+          data: {
+            found: false,
+            message: 'No matching orders found for this tracking number'
+          }
+        });
+      }
+
+      // If we found orders, return the first one for fulfillment
+      const order = orders[0];
+      
+      res.json({
+        success: true,
+        data: {
+          found: true,
+          order: {
+            id: order.id,
+            customerName: `${order.firstname} ${order.lastname}`,
+            email: order.email,
+            completed: order.completed,
+            tracking: order.tracking
+          }
+        }
+      });
+      
+    } catch (error) {
+      console.error('Error processing tracking number:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to process tracking number'
+      });
+    }
+  });
+
   // Products endpoints
   app.get('/api/products', async (req, res) => {
     try {

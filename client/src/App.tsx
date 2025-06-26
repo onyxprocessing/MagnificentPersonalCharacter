@@ -16,11 +16,12 @@ import SettingsPage from "./pages/SettingsPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import NotFound from "@/pages/not-found";
 import StripeProvider from "@/components/ui/StripeProvider";
+import ScannerPage from "./pages/ScannerPage";
 
 function Router() {
   // Check if we're on the root path or login path
   const path = window.location.pathname;
-  
+
   // If on the root or login path, show login page
   if (path === "/" || path === "/login") {
     return (
@@ -43,6 +44,7 @@ function Router() {
       <Route path="/affiliates/:code" component={AffiliateDetailPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route path="/checkout" component={CheckoutPage} />
+      <Route path="/scanner" component={ScannerPage} />
       <Route component={NotFound} />
     </Switch>
   );

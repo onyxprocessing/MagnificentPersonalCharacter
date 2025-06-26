@@ -7,7 +7,8 @@ import {
   Users, 
   UserCheck,
   Settings, 
-  LogOut 
+  LogOut,
+  Camera
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import trueAminosLogo from "../../assets/true-aminos-logo.png";
@@ -26,6 +27,7 @@ export default function Sidebar() {
     { icon: Package, label: "Products", path: "/products" },
     { icon: Users, label: "Customers", path: "/customers" },
     { icon: UserCheck, label: "Affiliates", path: "/affiliates" },
+    { icon: Camera, label: "Scanner", path: "/scanner" },
     { icon: Settings, label: "Settings", path: "/settings" },
   ];
 
@@ -38,7 +40,7 @@ export default function Sidebar() {
           className="h-16 w-auto object-contain"
         />
       </div>
-      
+
       <nav className="mt-8 flex-1">
         <ul className="space-y-1">
           {navItems.map((item) => (
@@ -58,7 +60,7 @@ export default function Sidebar() {
           ))}
         </ul>
       </nav>
-      
+
       <div className="p-4 border-t border-sidebar-border">
         <button 
           onClick={logout}

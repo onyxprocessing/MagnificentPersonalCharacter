@@ -7,7 +7,8 @@ import {
   Users, 
   Settings, 
   LogOut,
-  X 
+  X,
+  Camera
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import trueAminosLogo from "../../assets/true-aminos-logo.png";
@@ -31,6 +32,7 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
     { icon: Package, label: "Products", path: "/products" },
     { icon: Users, label: "Customers", path: "/customers" },
     { icon: Users, label: "Affiliates", path: "/affiliates" },
+    { icon: Camera, label: "Scanner", path: "/scanner" },
     { icon: Settings, label: "Settings", path: "/settings" },
   ];
 
@@ -54,7 +56,7 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
             <X className="h-5 w-5" />
           </button>
         </div>
-        
+
         <nav className="mt-8">
           <ul className="space-y-1">
             {navItems.map((item) => (
@@ -75,7 +77,7 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
             ))}
           </ul>
         </nav>
-        
+
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-sidebar-border">
           <button 
             onClick={() => {
