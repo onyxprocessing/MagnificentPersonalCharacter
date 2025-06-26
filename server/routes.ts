@@ -223,49 +223,106 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // First try to find order by exact tracking number match
+      console.log(`Scanner: Looking for tracking number: ${trackingNumber}`);
+
+      // First try to find orders by exact tracking number match in the tracking field
       let orders = await storage.getOrders({ 
+        limit: 100  // Increase limit to search more orders
+      });
+
+      // Filter for orders that have this exact tracking number
+      let matchingOrders = orders.filter(order => 
+        order.tracking && order.tracking.trim() === trackingNumber.trim()
+      );
+
+      console.log(`Found ${matchingOrders.length} orders with tracking number ${trackingNumber}`);
+
+      if (matchingOrders.length > 0) {
+        const order = matchingOrders[0];
+        console.log(`Found order ${order.id} for customer ${order.firstname} ${order.lastname}`);
+        
+        return res.json({
+          success: true,
+          data: {
+            found: true,
+            order: {
+              id: order.id,
+              customerName: `${order.firstname} ${order.lastname}`,
+              email: order.email,
+              completed: order.completed,
+              tracking: order.tracking,
+              status: order.status
+            }
+          }
+        });
+      }
+
+      // If no exact tracking match, try general search (fallback)
+      orders = await storage.getOrders({ 
         search: trackingNumber, 
         limit: 10 
       });
 
-      // If no exact match, try to find pending orders that might match this tracking
-      if (orders.length === 0) {
-        orders = await storage.getOrders({ 
-          status: 'payment_selection',
-          limit: 50 
-        });
-
-        // Filter for orders that don't have tracking yet or need fulfillment
-        orders = orders.filter(order => 
-          !order.completed && (!order.tracking || order.tracking.trim() === '')
-        );
-      }
-
-      if (orders.length === 0) {
+      if (orders.length > 0) {
+        const order = orders[0];
+        console.log(`Found order ${order.id} via general search for ${trackingNumber}`);
+        
         return res.json({
           success: true,
           data: {
-            found: false,
-            message: 'No matching orders found for this tracking number'
+            found: true,
+            order: {
+              id: order.id,
+              customerName: `${order.firstname} ${order.lastname}`,
+              email: order.email,
+              completed: order.completed,
+              tracking: order.tracking,
+              status: order.status
+            }
           }
         });
       }
 
-      // If we found orders, return the first one for fulfillment
-      const order = orders[0];
+      // If still no match, look for pending orders that might need this tracking number
+      orders = await storage.getOrders({ 
+        status: 'payment_selection',
+        limit: 50 
+      });
 
-      res.json({
+      // Filter for orders that don't have tracking yet or need fulfillment
+      const pendingOrders = orders.filter(order => 
+        !order.completed && (!order.tracking || order.tracking.trim() === '')
+      );
+
+      console.log(`Found ${pendingOrders.length} pending orders without tracking`);
+
+      if (pendingOrders.length > 0) {
+        const order = pendingOrders[0];
+        console.log(`Suggesting pending order ${order.id} for tracking ${trackingNumber}`);
+        
+        return res.json({
+          success: true,
+          data: {
+            found: true,
+            order: {
+              id: order.id,
+              customerName: `${order.firstname} ${order.lastname}`,
+              email: order.email,
+              completed: order.completed,
+              tracking: order.tracking,
+              status: order.status,
+              isPending: true // Flag to indicate this is a pending order suggestion
+            }
+          }
+        });
+      }
+
+      console.log(`No orders found for tracking number ${trackingNumber}`);
+      return res.json({
         success: true,
         data: {
-          found: true,
-          order: {
-            id: order.id,
-            customerName: `${order.firstname} ${order.lastname}`,
-            email: order.email,
-            completed: order.completed,
-            tracking: order.tracking
-          }
+          found: false,
+          message: 'No matching orders found for this tracking number'
         }
       });
 
