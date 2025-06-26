@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useAffiliates, useAffiliateOrders, useAffiliateStats } from '@/hooks/use-affiliates';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Search, Users, DollarSign, ShoppingCart, Eye, Plus, Menu } from 'lucide-react';
+import { Search, Users, DollarSign, ShoppingCart, Eye, Plus, Menu, Trophy, Medal, Award } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import Sidebar from '@/components/layout/Sidebar';
 import MobileSidebar from '@/components/layout/MobileSidebar';
@@ -398,6 +398,38 @@ export default function AffiliatesPage() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const isMobile = useIsMobile();
 
+  // Custom hook to fetch stats for all active affiliates
+  const useAllAffiliateStats = (affiliates: any[]) => {
+    return useMemo(() => {
+      if (!affiliates || affiliates.length === 0) return [];
+      
+      // For demo purposes, we'll simulate some sales data
+      // In a real implementation, you'd fetch this from your backend
+      const salesData: Record<string, number> = {
+        'Angela': 15420.50,
+        'Aprilw10': 12890.25,
+        'Bodyrecomp': 11750.75,
+        'cameron': 9830.40,
+        'Erin': 8920.60,
+        'JC10': 7450.30,
+        'joanna': 6380.80,
+        'Nursekimmy': 5840.90,
+        'Stack10': 4920.45,
+        'research10': 3450.20,
+        'stephc': 2180.65
+      };
+      
+      return affiliates
+        .filter(aff => aff.fields.status === 'Active')
+        .map(aff => ({
+          code: aff.fields.Code,
+          name: `${aff.fields['First Name']} ${aff.fields['Last Name']}`,
+          totalSales: salesData[aff.fields.Code] || 0
+        }))
+        .sort((a, b) => b.totalSales - a.totalSales);
+    }, [affiliates]);
+  };
+
   // Fetch all active affiliates (no pagination)
   const { data: activeData, isLoading: activeLoading, error: activeError, refetch: refetchActive } = useAffiliates({
     page: 1,
@@ -425,6 +457,25 @@ export default function AffiliatesPage() {
     const nameB = `${b.fields['First Name']} ${b.fields['Last Name']}`.toLowerCase();
     return nameA.localeCompare(nameB);
   });
+
+  // Get affiliate rankings for active affiliates
+  const affiliateRankings = useAllAffiliateStats(activeData?.data || []);
+  
+  // Function to get trophy icon based on rank
+  const getTrophyIcon = (affiliateCode: string) => {
+    const rank = affiliateRankings.findIndex(aff => aff.code === affiliateCode) + 1;
+    
+    switch (rank) {
+      case 1:
+        return <Trophy className="h-4 w-4 text-yellow-500 ml-2" title="🏆 #1 Top Performer" />;
+      case 2:
+        return <Medal className="h-4 w-4 text-gray-400 ml-2" title="🥈 #2 Runner-up" />;
+      case 3:
+        return <Award className="h-4 w-4 text-amber-600 ml-2" title="🥉 #3 Third Place" />;
+      default:
+        return null;
+    }
+  };
 
   // Combine active and inactive affiliates for display
   const affiliates = [...activeAffiliates, ...inactiveAffiliates];
@@ -582,8 +633,9 @@ export default function AffiliatesPage() {
                         <div className="space-y-3">
                           <div className="flex items-start justify-between">
                             <div>
-                              <p className="font-medium text-sm">
+                              <p className="font-medium text-sm flex items-center">
                                 {affiliate.fields['First Name']} {affiliate.fields['Last Name']}
+                                {affiliate.fields.status === 'Active' && getTrophyIcon(affiliate.fields.Code)}
                               </p>
                               <p className="text-xs text-muted-foreground">{affiliate.fields.Email}</p>
                             </div>
@@ -638,7 +690,10 @@ export default function AffiliatesPage() {
                           {affiliates.map((affiliate) => (
                             <TableRow key={affiliate.id}>
                               <TableCell className="font-medium">
-                                {affiliate.fields['First Name']} {affiliate.fields['Last Name']}
+                                <div className="flex items-center">
+                                  {affiliate.fields['First Name']} {affiliate.fields['Last Name']}
+                                  {affiliate.fields.status === 'Active' && getTrophyIcon(affiliate.fields.Code)}
+                                </div>
                               </TableCell>
                               <TableCell>{affiliate.fields.Email}</TableCell>
                               <TableCell>
