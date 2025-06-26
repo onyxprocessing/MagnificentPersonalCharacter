@@ -58,7 +58,7 @@ export interface IStorage {
 
 // Airtable implementation of storage
 export class AirtableStorage implements IStorage {
-  private airtable: Airtable.Base;
+  public airtable: Airtable.Base;
   private users: Map<number, User>;
   private currentId: number;
 
@@ -1398,3 +1398,6 @@ export class MemStorage implements IStorage {
 
 // Export the storage interface implementation
 export const storage = new AirtableStorage();
+
+// Export the Airtable client for direct access in routes
+export const airtableClient = storage.airtable;
