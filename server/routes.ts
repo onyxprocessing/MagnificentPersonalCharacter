@@ -256,7 +256,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 completed: Boolean(fields.completed),
                 tracking: fields.tracking || '',
                 status: fields.status || 'payment_selection',
-                hasExistingTracking: true
+                hasExistingTracking: true,
+                total: fields.total || '0'
+              }
+            }
+          });
+        }
+
+        // Also try searching with lowercase field name in case of case sensitivity
+        const trackingQueryLower = {
+          filterByFormula: `{Tracking} = "${trackingNumber.trim()}"`,
+          pageSize: 10
+        };
+
+        console.log(`Trying with capitalized field name: {Tracking} = "${trackingNumber.trim()}"`);
+        
+        const trackingRecordsUpper = await airtableClient('carts').select(trackingQueryLower).all();
+        
+        console.log(`Found ${trackingRecordsUpper.length} Airtable records with capitalized Tracking field`);
+
+        if (trackingRecordsUpper.length > 0) {
+          const record = trackingRecordsUpper[0];
+          const fields = record.fields;
+          
+          console.log(`Found order ${record.id} for customer ${fields.firstname} ${fields.lastname} with existing tracking (capitalized field)`);
+          
+          return res.json({
+            success: true,
+            data: {
+              found: true,
+              order: {
+                id: record.id,
+                customerName: `${fields.firstname || ''} ${fields.lastname || ''}`.trim(),
+                email: fields.email || '',
+                completed: Boolean(fields.completed),
+                tracking: fields.Tracking || fields.tracking || '',
+                status: fields.status || 'payment_selection',
+                hasExistingTracking: true,
+                total: fields.total || '0'
               }
             }
           });
