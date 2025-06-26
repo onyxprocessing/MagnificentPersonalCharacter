@@ -1,5 +1,5 @@
 import { useParams } from "wouter";
-import { ArrowLeft, DollarSign, Users, ShoppingCart, Percent, CalendarIcon, Download, Trophy, Medal, Award } from "lucide-react";
+import { ArrowLeft, DollarSign, Users, ShoppingCart, Percent, CalendarIcon, Download } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,7 +21,7 @@ export default function AffiliateDetailPage() {
   const [dateFilter, setDateFilter] = useState<string>('all');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const isMobile = useIsMobile();
-  
+
   const { data: affiliatesData } = useAffiliates({ limit: 100 });
   const { data: ordersData } = useAffiliateOrders({ affiliateCode: code || '', limit: 200 });
   const { data: statsData } = useAffiliateStats(code || '');
@@ -76,10 +76,10 @@ export default function AffiliateDetailPage() {
   // Filter orders based on date range
   const filterOrdersByDate = (orders: any[]) => {
     if (dateFilter === 'all') return orders;
-    
+
     const dateRange = getDateRange(dateFilter);
     if (!dateRange) return orders;
-    
+
     return orders.filter((order: any) => {
       const orderDate = new Date(order.fields.createdat);
       return orderDate >= dateRange.start && orderDate <= dateRange.end;
@@ -89,82 +89,26 @@ export default function AffiliateDetailPage() {
   // Find the specific affiliate
   const affiliate = affiliatesData?.data?.find((a: any) => a.fields.Code === code);
 
-  // Calculate rankings for all affiliates based on total sales
-  const affiliateRankings = React.useMemo(() => {
-    if (!affiliatesData?.data) return [];
-    
-    const rankingsData = affiliatesData.data.map((aff: any) => {
-      const affiliateOrders = ordersData?.data?.filter((order: any) => 
-        order.fields.affiliatecode === aff.fields.Code
-      ) || [];
-      
-      const totalSales = affiliateOrders.reduce((sum: number, order: any) => {
-        const total = parseFloat(order.fields.total || '0');
-        return sum + (isNaN(total) ? 0 : total);
-      }, 0);
-      
-      return {
-        code: aff.fields.Code,
-        name: `${aff.fields['First Name']} ${aff.fields['Last Name']}`,
-        totalSales
-      };
-    });
-    
-    // Sort by total sales descending
-    return rankingsData.sort((a, b) => b.totalSales - a.totalSales);
-  }, [affiliatesData?.data, ordersData?.data]);
 
-  // Get current affiliate's rank
-  const currentAffiliateRank = affiliateRankings.findIndex(
-    (aff: any) => aff.code === code
-  ) + 1;
-
-  // Get trophy/medal component based on rank
-  const getRankIcon = (rank: number) => {
-    switch (rank) {
-      case 1:
-        return <Trophy className="h-6 w-6 text-yellow-500" />;
-      case 2:
-        return <Medal className="h-6 w-6 text-gray-400" />;
-      case 3:
-        return <Award className="h-6 w-6 text-amber-600" />;
-      default:
-        return null;
-    }
-  };
-
-  const getRankColor = (rank: number) => {
-    switch (rank) {
-      case 1:
-        return "text-yellow-500 bg-yellow-50 border-yellow-200";
-      case 2:
-        return "text-gray-600 bg-gray-50 border-gray-200";
-      case 3:
-        return "text-amber-600 bg-amber-50 border-amber-200";
-      default:
-        return "text-muted-foreground bg-muted border-border";
-    }
-  };
-  
   if (!affiliate) {
     return (
       <div className="flex h-screen bg-background">
         {/* Sidebar for desktop */}
         <Sidebar />
-        
+
         {/* Mobile Sidebar */}
         <MobileSidebar 
           isOpen={isMobileSidebarOpen} 
           onClose={() => setIsMobileSidebarOpen(false)} 
         />
-        
+
         {/* Main Content */}
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header 
             onToggleMobileMenu={() => setIsMobileSidebarOpen(true)}
             title="Affiliate Details"
           />
-          
+
           <main className="flex-1 overflow-y-auto bg-background p-4 md:p-6">
             <div className="flex items-center gap-4 mb-6">
               <Link href="/affiliates">
@@ -191,24 +135,24 @@ export default function AffiliateDetailPage() {
   // Calculate commission based on 85% profit margin of items total (excluding shipping)
   const calculateOrderCommission = (order: any) => {
     if (!order.fields.cartitems) return 0;
-    
+
     const cartItems = JSON.parse(order.fields.cartitems);
     let itemsTotal = 0;
-    
+
     // Calculate total items cost
     cartItems.forEach((item: any) => {
       const itemPrice = parseFloat(item.product?.price || '0') * item.quantity;
       itemsTotal += itemPrice;
     });
-    
+
     // Apply affiliate discount first
     const affiliateDiscount = parseFloat(affiliate.fields.discount || '0');
     const discountAmount = (itemsTotal * affiliateDiscount) / 100;
     const subtotalAfterDiscount = itemsTotal - discountAmount;
-    
+
     // Apply 85% profit margin to get commission base (company keeps 15% for costs)
     const profitBase = subtotalAfterDiscount * 0.85;
-    
+
     // Calculate affiliate commission from the profit
     return profitBase * (parseFloat(affiliate.fields.share || '0') / 100);
   };
@@ -231,18 +175,18 @@ export default function AffiliateDetailPage() {
     if (!affiliate || orders.length === 0) return;
 
     const doc = new jsPDF();
-    
+
     // Header - Company Logo and Info
     doc.setFontSize(24);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(41, 128, 185); // Blue color
     doc.text('TrueAminos', 20, 25);
-    
+
     doc.setFontSize(14);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(0, 0, 0); // Black
     doc.text('Affiliate Commission Statement', 20, 35);
-    
+
     // Statement Period
     const periodLabel = dateFilter === 'all' ? 'All Time' : 
                        dateFilter === 'today' ? 'Today' :
@@ -253,45 +197,45 @@ export default function AffiliateDetailPage() {
                        dateFilter === 'month' ? 'This Month' :
                        dateFilter === 'year' ? 'This Year' : 
                        dateFilter.charAt(0).toUpperCase() + dateFilter.slice(1);
-    
+
     doc.text(`Statement Period: ${periodLabel}`, 20, 45);
     doc.text(`Generated: ${format(new Date(), 'MMMM d, yyyy')}`, 20, 55);
-    
+
     // Affiliate Information Box
     doc.setDrawColor(200, 200, 200);
     doc.rect(20, 65, 170, 35);
-    
+
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.text('Affiliate Information', 25, 75);
-    
+
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.text(`Name: ${affiliate.fields['First Name']} ${affiliate.fields['Last Name']}`, 25, 85);
     doc.text(`Code: ${affiliate.fields.Code}`, 25, 92);
     doc.text(`Email: ${affiliate.fields.Email}`, 100, 85);
     doc.text(`Commission Rate: ${affiliate.fields.share || 'N/A'}%`, 100, 92);
-    
+
     // Summary Box
     doc.rect(20, 110, 170, 25);
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.text('Summary', 25, 120);
-    
+
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.text(`Total Orders: ${filteredStats.totalOrders}`, 25, 128);
     doc.text(`Total Sales: $${filteredStats.totalSales.toFixed(2)}`, 75, 128);
     doc.text(`Total Commission: $${filteredStats.totalCommission.toFixed(2)}`, 130, 128);
-    
+
     // Detailed Orders Section
     let currentY = 145;
-    
+
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.text('Recent Orders', 20, currentY);
     currentY += 15;
-    
+
     orders.forEach((order: any, index: number) => {
       const cartItems = order.fields.cartitems ? JSON.parse(order.fields.cartitems) : [];
       const itemsTotal = cartItems.reduce((sum: number, item: any) => {
@@ -307,57 +251,57 @@ export default function AffiliateDetailPage() {
       const calculatedTotal = subtotalAfterDiscount + shippingCost;
       const checkoutTotal = parseFloat(order.fields.total || '0');
       const commission = calculateOrderCommission(order);
-      
+
       // Estimate space needed for this order
       const estimatedHeight = 45 + (cartItems.length * 5) + 45; // Header + items + breakdown
-      
+
       if (currentY + estimatedHeight > 270) {
         doc.addPage();
         currentY = 20;
       }
-      
+
       // Order Header Box
       doc.setFillColor(248, 249, 250);
       doc.setDrawColor(218, 220, 224);
       doc.setLineWidth(0.5);
       doc.rect(20, currentY - 3, 170, 18, 'FD');
-      
+
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(33, 37, 41);
       doc.text(`${order.fields.firstname} ${order.fields.lastname}`, 25, currentY + 3);
-      
+
       // Status text
       const statusText = order.fields.status === 'payment_selection' ? 'Ordered' : order.fields.status;
       doc.setTextColor(33, 37, 41);
       doc.setFontSize(9);
       doc.text(statusText, 165, currentY + 3, { align: 'right' });
-      
+
       doc.setTextColor(108, 117, 125);
       doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
       doc.text(order.fields.email, 25, currentY + 8);
       doc.text(format(new Date(order.fields.createdat), 'MMM d, yyyy h:mm a'), 25, currentY + 13);
-      
+
       currentY += 22;
-      
+
       // Order Items Box
       const itemsBoxHeight = (cartItems.length * 4) + 8;
       doc.setFillColor(255, 255, 255);
       doc.setDrawColor(218, 220, 224);
       doc.setLineWidth(0.5);
       doc.rect(20, currentY - 2, 170, itemsBoxHeight, 'FD');
-      
+
       doc.setFontSize(9);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(33, 37, 41);
       doc.text('Order Items:', 25, currentY + 3);
       currentY += 8;
-      
+
       cartItems.forEach((item: any) => {
         const itemPrice = parseFloat(item.product?.price || '0') * item.quantity;
         const itemCost = itemPrice * 0.15;
-        
+
         doc.setFontSize(8);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(73, 80, 87);
@@ -368,9 +312,9 @@ export default function AffiliateDetailPage() {
         doc.text(`Cost: $${itemCost.toFixed(2)}`, 175, currentY, { align: 'right' });
         currentY += 4;
       });
-      
+
       currentY += 5;
-      
+
       // Financial Breakdown Box
       const breakdownLines = 7 + (affiliateDiscount > 0 ? 1 : 0) + (Math.abs(checkoutTotal - calculatedTotal) > 0.01 ? 1 : 0);
       const breakdownBoxHeight = (breakdownLines * 3) + 8;
@@ -378,23 +322,23 @@ export default function AffiliateDetailPage() {
       doc.setDrawColor(218, 220, 224);
       doc.setLineWidth(0.5);
       doc.rect(20, currentY - 2, 170, breakdownBoxHeight, 'FD');
-      
+
       doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(73, 80, 87);
       currentY += 2;
-      
+
       doc.text('Items Total:', 30, currentY);
       doc.setTextColor(33, 37, 41);
       doc.text(`$${itemsTotal.toFixed(2)}`, 175, currentY, { align: 'right' });
       currentY += 3;
-      
+
       doc.setTextColor(73, 80, 87);
       doc.text('Total Product Cost (15%):', 30, currentY);
       doc.setTextColor(220, 53, 69);
       doc.text(`$${(itemsTotal * 0.15).toFixed(2)}`, 175, currentY, { align: 'right' });
       currentY += 3;
-      
+
       if (affiliateDiscount > 0) {
         doc.setTextColor(73, 80, 87);
         doc.text(`Affiliate Discount (${affiliateDiscount}%):`, 30, currentY);
@@ -402,36 +346,36 @@ export default function AffiliateDetailPage() {
         doc.text(`-$${discountAmount.toFixed(2)}`, 175, currentY, { align: 'right' });
         currentY += 3;
       }
-      
+
       doc.setTextColor(73, 80, 87);
       doc.text('Subtotal:', 30, currentY);
       doc.setTextColor(33, 37, 41);
       doc.text(`$${subtotalAfterDiscount.toFixed(2)}`, 175, currentY, { align: 'right' });
       currentY += 3;
-      
+
       doc.setTextColor(73, 80, 87);
       doc.text('Available for Commission (85%):', 30, currentY);
       doc.setTextColor(13, 110, 253);
       doc.text(`$${availableForCommission.toFixed(2)}`, 175, currentY, { align: 'right' });
       currentY += 3;
-      
+
       doc.setTextColor(73, 80, 87);
       doc.text('Shipping:', 30, currentY);
       doc.setTextColor(33, 37, 41);
       doc.text(`$${shippingCost.toFixed(2)}`, 175, currentY, { align: 'right' });
       currentY += 3;
-      
+
       // Separator line
       doc.setDrawColor(218, 220, 224);
       doc.line(30, currentY + 1, 175, currentY + 1);
       currentY += 3;
-      
+
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(33, 37, 41);
       doc.text('Calculated Total:', 30, currentY);
       doc.text(`$${calculatedTotal.toFixed(2)}`, 175, currentY, { align: 'right' });
       currentY += 3;
-      
+
       if (Math.abs(checkoutTotal - calculatedTotal) > 0.01) {
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(255, 193, 7);
@@ -439,24 +383,24 @@ export default function AffiliateDetailPage() {
         doc.text(`$${checkoutTotal.toFixed(2)}`, 175, currentY, { align: 'right' });
         currentY += 3;
       }
-      
+
       // Commission earned
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(40, 167, 69);
       doc.text('Commission Earned:', 30, currentY);
       doc.text(`$${commission.toFixed(2)}`, 175, currentY, { align: 'right' });
-      
+
       currentY += 15;
     });
 
     // Footer
     const finalY = currentY + 20;
-    
+
     doc.setFontSize(8);
     doc.setFont('helvetica', 'italic');
     doc.text('Commission calculated at 85% profit margin after affiliate discount', 20, finalY);
     doc.text('Only completed orders (payment_selection status) are included in commission calculations', 20, finalY + 8);
-    
+
     // Page numbers
     const pageCount = doc.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
@@ -464,7 +408,7 @@ export default function AffiliateDetailPage() {
       doc.setFontSize(8);
       doc.text(`Page ${i} of ${pageCount}`, 180, doc.internal.pageSize.height - 10);
     }
-    
+
     // Save the PDF
     const filename = `${affiliate.fields.Code}_Commission_Statement_${periodLabel.replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.pdf`;
     doc.save(filename);
@@ -474,20 +418,20 @@ export default function AffiliateDetailPage() {
     <div className="flex h-screen bg-background">
       {/* Sidebar for desktop */}
       <Sidebar />
-      
+
       {/* Mobile Sidebar */}
       <MobileSidebar 
         isOpen={isMobileSidebarOpen} 
         onClose={() => setIsMobileSidebarOpen(false)} 
       />
-      
+
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header 
           onToggleMobileMenu={() => setIsMobileSidebarOpen(true)}
           title="Affiliate Details"
         />
-        
+
         <main className="flex-1 overflow-y-auto bg-background p-4 md:p-6 space-y-6">
           {/* Header */}
           <div className="flex items-center gap-4">
@@ -544,22 +488,6 @@ export default function AffiliateDetailPage() {
                       </span>
                     </div>
                   </div>
-                  <div className="sm:col-span-2">
-                    <label className="text-sm font-medium text-muted-foreground">Performance Ranking</label>
-                    <div className={`flex items-center gap-2 p-3 rounded-lg border ${getRankColor(currentAffiliateRank)}`}>
-                      {getRankIcon(currentAffiliateRank)}
-                      <span className="text-lg font-semibold">
-                        #{currentAffiliateRank} of {affiliateRankings.length}
-                        {currentAffiliateRank <= 3 && (
-                          <span className="ml-2 text-sm font-normal">
-                            {currentAffiliateRank === 1 ? "🏆 Top Performer!" : 
-                             currentAffiliateRank === 2 ? "🥈 Excellent!" : 
-                             "🥉 Great Work!"}
-                          </span>
-                        )}
-                      </span>
-                    </div>
-                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -604,98 +532,7 @@ export default function AffiliateDetailPage() {
           </div>
 
           {/* Top Performers Leaderboard */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Trophy className="h-5 w-5 text-yellow-500" />
-                Top Performers Leaderboard
-              </CardTitle>
-              <CardDescription>
-                Rankings based on total sales volume
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {affiliateRankings.slice(0, 3).map((rankedAffiliate: any, index: number) => {
-                  const rank = index + 1;
-                  const isCurrentAffiliate = rankedAffiliate.code === code;
-                  
-                  return (
-                    <div 
-                      key={rankedAffiliate.code}
-                      className={`flex items-center justify-between p-4 rounded-lg border ${
-                        isCurrentAffiliate 
-                          ? `${getRankColor(rank)} ring-2 ring-offset-2 ring-current` 
-                          : getRankColor(rank)
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2">
-                          {getRankIcon(rank)}
-                          <span className="text-2xl font-bold">#{rank}</span>
-                        </div>
-                        <div>
-                          <div className="font-semibold flex items-center gap-2">
-                            {rankedAffiliate.name}
-                            {isCurrentAffiliate && (
-                              <Badge variant="outline" className="text-xs">
-                                You
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            Code: {rankedAffiliate.code}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-lg font-bold">
-                          ${rankedAffiliate.totalSales.toFixed(2)}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          Total Sales
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-                
-                {currentAffiliateRank > 3 && (
-                  <>
-                    <div className="text-center text-muted-foreground py-2">
-                      <span className="text-sm">...</span>
-                    </div>
-                    <div className={`flex items-center justify-between p-4 rounded-lg border ${getRankColor(currentAffiliateRank)} ring-2 ring-offset-2 ring-current`}>
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-2xl font-bold">#{currentAffiliateRank}</span>
-                        </div>
-                        <div>
-                          <div className="font-semibold flex items-center gap-2">
-                            {affiliate.fields['First Name']} {affiliate.fields['Last Name']}
-                            <Badge variant="outline" className="text-xs">
-                              You
-                            </Badge>
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            Code: {affiliate.fields.Code}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-lg font-bold">
-                          ${filteredStats.totalSales.toFixed(2)}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          Total Sales
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+
 
       {/* Recent Orders */}
           <Card>
@@ -770,7 +607,7 @@ export default function AffiliateDetailPage() {
                           {format(new Date(order.fields.createdat), 'MMM d, yyyy h:mm a')}
                         </p>
                       </div>
-                      
+
                       <div className="flex-1 lg:px-4">
                         <div className="text-sm">
                           <p className="font-medium text-muted-foreground mb-1">Order Items:</p>
@@ -782,15 +619,15 @@ export default function AffiliateDetailPage() {
                                 return sum + itemPrice;
                               }, 0);
                               const shippingCost = 9.99;
-                              
+
                               // Calculate affiliate discount
                               const affiliateDiscount = parseFloat(affiliate.fields.discount || '0');
                               const discountAmount = (itemsTotal * affiliateDiscount) / 100;
                               const subtotalAfterDiscount = itemsTotal - discountAmount;
                               const calculatedTotal = subtotalAfterDiscount + shippingCost;
-                              
+
                               const orderTotal = parseFloat(order.fields.total || '0');
-                              
+
                               return (
                                 <>
                                   {cartItems.map((item: any, index: number) => (
@@ -815,7 +652,7 @@ export default function AffiliateDetailPage() {
                                       </div>
                                     </div>
                                   ))}
-                                  
+
                                   {/* Order totals breakdown */}
                                   <div className="mt-2 pt-2 border-t border-gray-200 text-xs space-y-1">
                                     <div className="flex justify-between">
