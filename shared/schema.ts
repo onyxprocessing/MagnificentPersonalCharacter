@@ -156,3 +156,53 @@ export type InsertProduct = z.infer<typeof insertProductSchema>;
 
 export type Customer = typeof customers.$inferSelect;
 export type InsertCustomer = z.infer<typeof insertCustomerSchema>;
+
+export async function apiRequest(method: string, url: string, data?: any): Promise<any> {
+  console.log('API Request:', method, url, data);
+
+  const config: RequestInit = {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  };
+
+  if (data) {
+    config.body = JSON.stringify(data);
+  }
+
+  try {
+    const response = await fetch(url, config);
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error('API Error Response:', errorData);
+      throw new Error(`HTTP ${response.status}: ${errorData}`);
+    }
+
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const textResponse = await response.text();
+      console.error('Non-JSON response received:', textResponse);
+      throw new Error('Server returned non-JSON response');
+    }
+
+    const result = await response.json();
+    console.log('API Response:', result);
+
+    // Ensure we're returning a valid object
+    if (!result) {
+      console.error('Empty response received from server');
+      throw new Error('Empty response from server');
+    }
+
+    return result;
+  } catch (error) {
+    console.error('API Request Error:', error);
+    if (error instanceof Error) {
+      throw error;
+    } else {
+      throw new Error('Network error occurred');
+    }
+  }
+}
