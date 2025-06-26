@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, Package, CheckCircle, XCircle, RotateCcw } from 'lucide-react';
+import { Camera, Package, CheckCircle, XCircle, RotateCcw, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +22,7 @@ interface ScannedPackage {
 export default function ScannerPage() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
+  const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
   const [scannedPackages, setScannedPackages] = useState<ScannedPackage[]>([]);
   const [manualTracking, setManualTracking] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -29,8 +30,14 @@ export default function ScannerPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
 
-  // Start camera
-  const startCamera = async () => {
+  // Start camera in modal
+  const startCamera = () => {
+    setIsCameraModalOpen(true);
+    // Camera initialization will happen in the modal
+  };
+
+  // Initialize camera stream in modal
+  const initializeCameraStream = async () => {
     try {
       // Check if getUserMedia is supported
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -104,7 +111,7 @@ export default function ScannerPage() {
         // Set dimensions to ensure visibility
         video.style.width = '100%';
         video.style.height = 'auto';
-        video.style.minHeight = '200px';
+        video.style.minHeight = '300px';
         video.style.backgroundColor = '#000000';
         video.style.objectFit = 'cover';
 
@@ -146,7 +153,7 @@ export default function ScannerPage() {
             console.error('Error playing video:', playError);
             toast({
               title: "Camera Error", 
-              description: "Could not start video playback. Try tapping the video area or refresh page.",
+              description: "Could not start video playback. Try tapping the video area.",
               variant: "destructive"
             });
           }
@@ -217,6 +224,22 @@ export default function ScannerPage() {
     }
     setIsScanning(false);
   };
+
+  // Close camera modal
+  const closeCameraModal = () => {
+    stopCamera();
+    setIsCameraModalOpen(false);
+  };
+
+  // Initialize camera when modal opens
+  useEffect(() => {
+    if (isCameraModalOpen) {
+      // Small delay to ensure modal is fully rendered
+      setTimeout(() => {
+        initializeCameraStream();
+      }, 300);
+    }
+  }, [isCameraModalOpen]);
 
   // Capture and process image
   const captureImage = async () => {
@@ -435,77 +458,12 @@ export default function ScannerPage() {
                 )}
 
                 {/* Camera Controls */}
-                
                 <div className="flex flex-col gap-2">
-                  {!isScanning ? (
-                    <Button onClick={startCamera} className="w-full h-12 text-lg">
-                      <Camera className="w-5 h-5 mr-2" />
-                      📱 Start Camera
-                    </Button>
-                  ) : (
-                    <div className="flex gap-2">
-                      <Button 
-                        onClick={captureImage} 
-                        disabled={isProcessing} 
-                        className="flex-1 h-12 text-lg bg-blue-600 hover:bg-blue-700"
-                      >
-                        <Package className="w-5 h-5 mr-2" />
-                        {isProcessing ? '🔄 Processing...' : '📸 Take Picture'}
-                      </Button>
-                      <Button variant="outline" onClick={stopCamera} className="h-12">
-                        Stop
-                      </Button>
-                    </div>
-                  )}
+                  <Button onClick={startCamera} className="w-full h-12 text-lg">
+                    <Camera className="w-5 h-5 mr-2" />
+                    📱 Open Camera Scanner
+                  </Button>
                 </div>
-                
-                {/* Camera Preview */}
-                {isScanning && (
-                  <div className="relative">
-                    <video
-                      ref={videoRef}
-                      autoPlay
-                      playsInline
-                      muted
-                      controls={false}
-                      webkit-playsinline=""
-                      className="w-full h-64 sm:h-80 bg-black rounded-lg object-cover"
-                      style={{
-                        minHeight: '200px',
-                        backgroundColor: '#000000'
-                      }}
-                      onClick={() => {
-                        // Allow manual play trigger for iOS
-                        if (videoRef.current) {
-                          videoRef.current.play().catch(console.error);
-                        }
-                      }}
-                    />
-                    <div className="absolute inset-0 border-2 border-blue-500 border-dashed rounded-lg pointer-events-none">
-                      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-40 h-20 border-2 border-blue-500 rounded bg-blue-500/10">
-                        <div className="text-center text-xs text-blue-600 mt-7">Focus tracking number here</div>
-                      </div>
-                    </div>
-
-                    {/* Camera Status Indicator */}
-                    <div className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
-                      <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                      LIVE
-                    </div>
-
-                    {/* Instructions */}
-                    <div className="absolute bottom-2 left-2 right-2 bg-black/70 text-white text-xs p-2 rounded">
-                      📱 iOS: If video is black, tap the video area to start playback. Hold steady and point at tracking number.
-                    </div>
-                    
-                    {/* Debug info for troubleshooting */}
-                    <div className="absolute top-8 right-2 bg-black/70 text-white text-xs p-1 rounded">
-                      {videoRef.current?.videoWidth && videoRef.current?.videoHeight ? 
-                        `${videoRef.current.videoWidth}x${videoRef.current.videoHeight}` : 
-                        'Loading...'}
-                    </div>
-                  </div>
-                )}
 
                 {/* Hidden canvas for image processing */}
                 <canvas ref={canvasRef} style={{ display: 'none' }} />
@@ -593,6 +551,106 @@ export default function ScannerPage() {
           </div>
         </main>
       </div>
+
+      {/* Camera Modal */}
+      {isCameraModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75">
+          <div className="relative w-full h-full max-w-lg mx-4 bg-white rounded-lg overflow-hidden">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="text-lg font-semibold">📱 Package Scanner</h3>
+              <Button variant="ghost" size="sm" onClick={closeCameraModal}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+
+            {/* Camera Feed */}
+            <div className="relative">
+              {/* Camera Status */}
+              {isScanning && (
+                <div className="absolute top-2 left-2 z-10 bg-green-500 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
+                  <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                  LIVE
+                </div>
+              )}
+
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                controls={false}
+                webkit-playsinline=""
+                className="w-full h-80 bg-black object-cover"
+                style={{
+                  minHeight: '320px',
+                  backgroundColor: '#000000'
+                }}
+                onClick={() => {
+                  // Allow manual play trigger for iOS
+                  if (videoRef.current) {
+                    videoRef.current.play().catch(console.error);
+                  }
+                }}
+              />
+
+              {/* Scanning Frame Overlay */}
+              <div className="absolute inset-0 pointer-events-none">
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-32 border-2 border-blue-500 rounded bg-blue-500/10">
+                  <div className="text-center text-xs text-blue-600 mt-12 font-semibold">
+                    📦 Point at tracking number
+                  </div>
+                </div>
+              </div>
+
+              {/* Instructions Overlay */}
+              <div className="absolute bottom-2 left-2 right-2 bg-black/80 text-white text-xs p-3 rounded">
+                <div className="text-center">
+                  📱 <strong>iOS Users:</strong> If video appears black, tap the video area to start camera
+                </div>
+              </div>
+
+              {/* Debug info */}
+              <div className="absolute top-2 right-2 bg-black/70 text-white text-xs p-1 rounded">
+                {videoRef.current?.videoWidth && videoRef.current?.videoHeight ? 
+                  `${videoRef.current.videoWidth}x${videoRef.current.videoHeight}` : 
+                  'Initializing...'}
+              </div>
+            </div>
+
+            {/* Modal Footer with Controls */}
+            <div className="p-4 space-y-3">
+              {/* Take Picture Button */}
+              <Button 
+                onClick={captureImage} 
+                disabled={isProcessing || !isScanning} 
+                className="w-full h-12 text-lg bg-blue-600 hover:bg-blue-700"
+              >
+                <Package className="w-5 h-5 mr-2" />
+                {isProcessing ? '🔄 Processing...' : '📸 Take Picture of Label'}
+              </Button>
+
+              {/* Close Button */}
+              <Button 
+                variant="outline" 
+                onClick={closeCameraModal} 
+                className="w-full"
+              >
+                Close Scanner
+              </Button>
+
+              {/* Camera Status Text */}
+              <div className="text-center text-sm text-gray-600">
+                {isScanning ? (
+                  <span className="text-green-600">✅ Camera Active - Point at package label</span>
+                ) : (
+                  <span className="text-orange-600">⏳ Starting camera...</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
