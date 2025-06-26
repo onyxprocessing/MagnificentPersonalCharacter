@@ -183,7 +183,15 @@ export async function apiRequest(method: string, url: string, data?: any): Promi
     }
 
     const result = await response.json();
-    console.log('API Response parsed:', result);
+    console.log('API Response raw result:', result);
+    console.log('API Response type:', typeof result);
+    console.log('API Response keys:', result ? Object.keys(result) : 'no keys');
+
+    // Ensure we're returning a valid object
+    if (!result) {
+      console.error('Empty response received from server');
+      throw new Error('Empty response from server');
+    }
 
     return result;
   } catch (error) {

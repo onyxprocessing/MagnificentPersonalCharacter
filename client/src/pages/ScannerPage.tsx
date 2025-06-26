@@ -537,6 +537,9 @@ export default function ScannerPage() {
       console.log('Scanner API response:', response);
       console.log('Response type:', typeof response);
       console.log('Response keys:', response ? Object.keys(response) : 'no keys');
+      console.log('Response stringified:', JSON.stringify(response));
+      console.log('Response success property:', response?.success);
+      console.log('Response data property:', response?.data);
 
       if (response && response.success && response.data && response.data.found) {
         const order = response.data.order;
