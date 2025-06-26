@@ -288,22 +288,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // If still no match, look for pending orders that might need this tracking number
-      const pendingOrders = await storage.getOrders({ 
-        status: 'payment_selection',
-        limit: 50 
+      // If still no match, look for ALL orders with payment_selection status (paid or unpaid)
+      const allOrders = await storage.getOrders({ 
+        limit: 100 // Get more orders to find matches
       });
 
-      // Filter for orders that don't have tracking yet or need fulfillment
-      const ordersWithoutTracking = pendingOrders.filter(order => 
-        !order.completed && (!order.tracking || order.tracking.trim() === '')
+      // Filter for orders that don't have tracking yet and have payment_selection status
+      const ordersWithoutTracking = allOrders.filter(order => 
+        order.status === 'payment_selection' && 
+        !order.completed && 
+        (!order.tracking || order.tracking.trim() === '')
       );
 
-      console.log(`Found ${ordersWithoutTracking.length} pending orders without tracking`);
+      console.log(`Found ${ordersWithoutTracking.length} orders without tracking (payment_selection status)`);
 
       if (ordersWithoutTracking.length > 0) {
         const order = ordersWithoutTracking[0];
-        console.log(`Suggesting pending order ${order.id} for tracking ${trackingNumber}`);
+        console.log(`Suggesting order ${order.id} for tracking ${trackingNumber} (paid or unpaid)`);
         
         return res.json({
           success: true,
