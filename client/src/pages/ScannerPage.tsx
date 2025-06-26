@@ -37,81 +37,76 @@ export default function ScannerPage() {
         throw new Error('Camera not supported on this device');
       }
 
-      // Try multiple camera configurations for iOS compatibility
-      let stream = null;
+      // Simple constraints that work better on iOS
+      const constraints = {
+        video: {
+          facingMode: 'environment', // Use back camera if available
+          width: { ideal: 640 },
+          height: { ideal: 480 }
+        },
+        audio: false
+      };
 
-      // First try with environment camera (back camera)
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { exact: 'environment' },
-            width: { min: 640, ideal: 1280, max: 1920 },
-            height: { min: 480, ideal: 720, max: 1080 }
-          },
-          audio: false
-        });
-      } catch (envError) {
-        console.log('Environment camera failed, trying any camera:', envError);
-
-        // Fallback to any available camera
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-              width: { min: 320, ideal: 640, max: 1280 },
-              height: { min: 240, ideal: 480, max: 720 }
-            },
-            audio: false
-          });
-        } catch (anyError) {
-          console.log('Any camera failed, trying basic constraints:', anyError);
-
-          // Final fallback with minimal constraints
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-            audio: false
-          });
-        }
-      }
+      console.log('Requesting camera access...');
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      console.log('Got camera stream:', stream);
 
       if (videoRef.current && stream) {
+        // Stop any existing stream first
+        if (videoRef.current.srcObject) {
+          const existingStream = videoRef.current.srcObject as MediaStream;
+          existingStream.getTracks().forEach(track => track.stop());
+        }
+
+        // Set the stream
         videoRef.current.srcObject = stream;
+        
+        // Ensure video element is properly configured for iOS
+        const video = videoRef.current;
+        video.playsInline = true;
+        video.muted = true;
+        video.autoplay = true;
+        video.controls = false;
+        
+        // Add iOS-specific attributes
+        video.setAttribute('playsinline', 'true');
+        video.setAttribute('webkit-playsinline', 'true');
+        video.setAttribute('muted', 'true');
 
-        // Set video attributes for iOS
-        videoRef.current.setAttribute('playsinline', 'true');
-        videoRef.current.setAttribute('webkit-playsinline', 'true');
-        videoRef.current.muted = true;
-        videoRef.current.autoplay = true;
-
-        // Wait for video to load and start playing
-        videoRef.current.onloadedmetadata = () => {
-          if (videoRef.current) {
-            videoRef.current.play().then(() => {
+        // Force play the video
+        try {
+          await video.play();
+          console.log('Video is playing');
+          setIsScanning(true);
+          toast({
+            title: "Camera Active",
+            description: "Video feed is now showing. Point camera at tracking label.",
+            variant: "default"
+          });
+        } catch (playError) {
+          console.error('Video play failed:', playError);
+          
+          // Try to play again after a short delay
+          setTimeout(async () => {
+            try {
+              await video.play();
+              console.log('Video playing after retry');
               setIsScanning(true);
               toast({
                 title: "Camera Ready",
-                description: "Point camera at the tracking number on the package label",
+                description: "Video feed is now active",
                 variant: "default"
               });
-            }).catch((playError) => {
-              console.error('Error playing video:', playError);
+            } catch (retryError) {
+              console.error('Video play retry failed:', retryError);
               toast({
-                title: "Camera Error",
-                description: "Could not start video playback. Try allowing camera access in your browser settings.",
+                title: "Video Play Error",
+                description: "Cannot start video playback. Try refreshing the page.",
                 variant: "destructive"
               });
-            });
-          }
-        };
-
-        // Handle video errors
-        videoRef.current.onerror = (error) => {
-          console.error('Video element error:', error);
-          toast({
-            title: "Video Error",
-            description: "Camera video failed to load. Please try again.",
-            variant: "destructive"
-          });
-        };
+            }
+          }, 500);
+        }
       }
     } catch (error: any) {
       console.error('Error accessing camera:', error);
@@ -384,36 +379,85 @@ export default function ScannerPage() {
                         Stop
                       </Button>
                     </div>
+                    
+                    {/* Debug button for iOS */}
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        const video = videoRef.current;
+                        if (video) {
+                          console.log('Video debug info:', {
+                            srcObject: !!video.srcObject,
+                            videoWidth: video.videoWidth,
+                            videoHeight: video.videoHeight,
+                            readyState: video.readyState,
+                            paused: video.paused,
+                            muted: video.muted,
+                            playsInline: video.playsInline
+                          });
+                          toast({
+                            title: "Debug Info",
+                            description: `Video size: ${video.videoWidth}x${video.videoHeight}, State: ${video.readyState}, Paused: ${video.paused}`,
+                            variant: "default"
+                          });
+                        }
+                      }}
+                      className="text-xs"
+                    >
+                      📊 Debug Video
+                    </Button>
                   )}
                 </div>
                 
                 {/* Camera Preview */}
-                {isScanning && (
-                  <div className="relative">
-                    <video
-                      ref={videoRef}
-                      autoPlay
-                      playsInline
-                      muted
-                      controls={false}
-                      className="w-full h-64 sm:h-80 bg-black rounded-lg object-cover"
-                      style={{ 
-                        transform: 'scaleX(-1)',
-                        WebkitTransform: 'scaleX(-1)'
-                      }}
-                    />
+                <div className="relative">
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    controls={false}
+                    webkit-playsinline="true"
+                    className="w-full h-64 sm:h-80 bg-gray-900 rounded-lg object-cover border-2 border-gray-300"
+                    style={{ 
+                      transform: 'scaleX(-1)',
+                      WebkitTransform: 'scaleX(-1)',
+                      minHeight: '320px'
+                    }}
+                  />
+                  
+                  {/* Show overlay only when scanning */}
+                  {isScanning && (
                     <div className="absolute inset-0 border-2 border-blue-500 border-dashed rounded-lg pointer-events-none">
-                      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-16 border-2 border-blue-500 rounded bg-blue-500/10">
-                        <div className="text-center text-xs text-blue-600 mt-6">Focus tracking number here</div>
+                      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-40 h-20 border-2 border-green-400 rounded bg-green-400/10">
+                        <div className="text-center text-xs text-green-600 font-semibold mt-7">📋 Point at tracking number</div>
                       </div>
                     </div>
+                  )}
 
-                    {/* iOS Camera Instructions */}
-                    <div className="absolute bottom-2 left-2 right-2 bg-black/50 text-white text-xs p-2 rounded">
-                      📱 iOS: Make sure to allow camera access when prompted
-                    </div>
+                  {/* Status overlay */}
+                  <div className="absolute top-2 left-2 right-2 bg-black/70 text-white text-xs p-2 rounded">
+                    {isScanning ? (
+                      <span className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                        📹 Camera Active - Video Feed Should Be Visible
+                      </span>
+                    ) : (
+                      <span>📱 Click "Start Camera" to begin</span>
+                    )}
                   </div>
-                )}
+
+                  {/* Debug info for troubleshooting */}
+                  {isScanning && (
+                    <div className="absolute bottom-2 left-2 right-2 bg-black/70 text-white text-xs p-2 rounded">
+                      📱 If you see a black screen, try:
+                      <br />• Refresh the page and try again
+                      <br />• Check Safari camera permissions in Settings
+                      <br />• Use manual entry below if camera doesn't work
+                    </div>
+                  )}
+                </div>
 
                 {/* Hidden canvas for image processing */}
                 <canvas ref={canvasRef} style={{ display: 'none' }} />
