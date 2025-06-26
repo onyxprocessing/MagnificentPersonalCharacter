@@ -87,32 +87,66 @@ export default function ScannerPage() {
       if (videoRef.current) {
         // Set up video element
         const video = videoRef.current;
-        video.srcObject = stream;
         
-        // Set attributes for better compatibility
-        video.setAttribute('playsinline', 'true');
-        video.setAttribute('webkit-playsinline', 'true');
-        video.setAttribute('muted', 'true');
+        // Clear any existing source first
+        video.srcObject = null;
+        
+        // Set critical iOS attributes BEFORE setting srcObject
+        video.setAttribute('playsinline', '');
+        video.setAttribute('webkit-playsinline', '');
+        video.setAttribute('muted', '');
+        video.setAttribute('autoplay', '');
+        video.setAttribute('controls', 'false');
         video.muted = true;
         video.autoplay = true;
+        video.playsInline = true;
+        
+        // Set dimensions to ensure visibility
+        video.style.width = '100%';
+        video.style.height = 'auto';
+        video.style.minHeight = '200px';
+        video.style.backgroundColor = '#000000';
+        video.style.objectFit = 'cover';
+
+        // Now set the stream
+        video.srcObject = stream;
 
         // Wait for metadata to load, then play
         const handleLoadedMetadata = async () => {
           try {
             console.log('Video metadata loaded, attempting to play');
-            await video.play();
+            console.log('Video readyState:', video.readyState);
+            console.log('Video dimensions:', video.videoWidth, 'x', video.videoHeight);
+            
+            // Force play for iOS
+            const playPromise = video.play();
+            if (playPromise !== undefined) {
+              await playPromise;
+            }
+            
             console.log('Video playing successfully');
             setIsScanning(true);
+            
+            // Double check the video is actually playing
+            setTimeout(() => {
+              console.log('Video paused?', video.paused);
+              console.log('Video current time:', video.currentTime);
+              if (video.paused) {
+                console.log('Video is paused, trying to play again');
+                video.play().catch(console.error);
+              }
+            }, 500);
+            
             toast({
-              title: "Camera Ready",
-              description: "Point camera at the tracking number on the package label",
+              title: "📱 Camera Ready",
+              description: "Camera is now active! Point at tracking number on package label",
               variant: "default"
             });
           } catch (playError) {
             console.error('Error playing video:', playError);
             toast({
               title: "Camera Error", 
-              description: "Could not start video playback. Please try again.",
+              description: "Could not start video playback. Try tapping the video area or refresh page.",
               variant: "destructive"
             });
           }
@@ -127,18 +161,27 @@ export default function ScannerPage() {
           });
         };
 
+        const handleCanPlay = () => {
+          console.log('Video can play');
+          video.play().catch(console.error);
+        };
+
         // Remove any existing event listeners
         video.removeEventListener('loadedmetadata', handleLoadedMetadata);
         video.removeEventListener('error', handleVideoError);
+        video.removeEventListener('canplay', handleCanPlay);
         
         // Add event listeners
         video.addEventListener('loadedmetadata', handleLoadedMetadata);
         video.addEventListener('error', handleVideoError);
+        video.addEventListener('canplay', handleCanPlay);
 
-        // If metadata is already loaded, play immediately
-        if (video.readyState >= 1) {
-          handleLoadedMetadata();
-        }
+        // Try to play immediately for iOS
+        setTimeout(() => {
+          if (video.readyState >= 1) {
+            handleLoadedMetadata();
+          }
+        }, 100);
       }
     } catch (error: any) {
       console.error('Error accessing camera:', error);
@@ -425,7 +468,18 @@ export default function ScannerPage() {
                       playsInline
                       muted
                       controls={false}
+                      webkit-playsinline=""
                       className="w-full h-64 sm:h-80 bg-black rounded-lg object-cover"
+                      style={{
+                        minHeight: '200px',
+                        backgroundColor: '#000000'
+                      }}
+                      onClick={() => {
+                        // Allow manual play trigger for iOS
+                        if (videoRef.current) {
+                          videoRef.current.play().catch(console.error);
+                        }
+                      }}
                     />
                     <div className="absolute inset-0 border-2 border-blue-500 border-dashed rounded-lg pointer-events-none">
                       <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-40 h-20 border-2 border-blue-500 rounded bg-blue-500/10">
@@ -441,7 +495,14 @@ export default function ScannerPage() {
 
                     {/* Instructions */}
                     <div className="absolute bottom-2 left-2 right-2 bg-black/70 text-white text-xs p-2 rounded">
-                      📱 Hold steady and point at tracking number. Allow camera access if prompted.
+                      📱 iOS: If video is black, tap the video area to start playback. Hold steady and point at tracking number.
+                    </div>
+                    
+                    {/* Debug info for troubleshooting */}
+                    <div className="absolute top-8 right-2 bg-black/70 text-white text-xs p-1 rounded">
+                      {videoRef.current?.videoWidth && videoRef.current?.videoHeight ? 
+                        `${videoRef.current.videoWidth}x${videoRef.current.videoHeight}` : 
+                        'Loading...'}
                     </div>
                   </div>
                 )}
