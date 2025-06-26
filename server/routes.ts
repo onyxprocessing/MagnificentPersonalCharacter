@@ -60,6 +60,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Set up CORS for API routes
   app.use('/api', cors());
 
+  // Increase body parser limit for OCR image uploads
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
   // Rate limiting
   const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes

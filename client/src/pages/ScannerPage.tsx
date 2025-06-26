@@ -251,15 +251,29 @@ export default function ScannerPage() {
 
     if (!context) return;
 
-    // Set canvas size to match video
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    // Optimize canvas size - limit to reasonable dimensions for OCR
+    const maxWidth = 1280;
+    const maxHeight = 720;
+    
+    let { width, height } = { width: video.videoWidth, height: video.videoHeight };
 
-    // Draw current video frame to canvas
-    context.drawImage(video, 0, 0);
+    // Scale down if too large
+    if (width > maxWidth || height > maxHeight) {
+      const scale = Math.min(maxWidth / width, maxHeight / height);
+      width = Math.floor(width * scale);
+      height = Math.floor(height * scale);
+    }
 
-    // Convert to base64 for processing
-    const imageData = canvas.toDataURL('image/jpeg', 0.8);
+    canvas.width = width;
+    canvas.height = height;
+
+    // Draw current video frame to canvas with scaling
+    context.drawImage(video, 0, 0, width, height);
+
+    // Convert to base64 with optimized quality for OCR (reduce file size)
+    const imageData = canvas.toDataURL('image/jpeg', 0.6);
+
+    console.log('Captured image size:', Math.round(imageData.length / 1024), 'KB');
 
     // Process the image to extract tracking number
     await processImage(imageData);
@@ -352,6 +366,46 @@ export default function ScannerPage() {
       // Convert base64 to blob for the API call
       const base64Data = imageData.split(',')[1]; // Remove data:image/jpeg;base64, prefix
       
+      // Check image size before sending
+      const imageSizeKB = Math.round((base64Data.length * 3) / 4 / 1024);
+      console.log('Image size for OCR:', imageSizeKB, 'KB');
+      
+      if (imageSizeKB > 10000) { // 10MB limit
+        console.warn('Image too large for OCR, trying compression...');
+        // Further compress the image if it's still too large
+        const img = new Image();
+        img.src = imageData;
+        await new Promise(resolve => img.onload = resolve);
+        
+        const compressCanvas = document.createElement('canvas');
+        const compressCtx = compressCanvas.getContext('2d');
+        if (!compressCtx) throw new Error('Cannot create compression canvas');
+        
+        // Further reduce size
+        const maxSize = 800;
+        const scale = Math.min(maxSize / img.width, maxSize / img.height);
+        compressCanvas.width = Math.floor(img.width * scale);
+        compressCanvas.height = Math.floor(img.height * scale);
+        
+        compressCtx.drawImage(img, 0, 0, compressCanvas.width, compressCanvas.height);
+        const compressedData = compressCanvas.toDataURL('image/jpeg', 0.4).split(',')[1];
+        
+        console.log('Compressed image size:', Math.round((compressedData.length * 3) / 4 / 1024), 'KB');
+        return await sendOCRRequest(compressedData);
+      }
+      
+      return await sendOCRRequest(base64Data);
+    } catch (error) {
+      console.error('Google Vision OCR error:', error);
+      // Fallback to Tesseract.js if Google Vision fails
+      return await extractTrackingFromImageTesseract(imageData);
+    }
+  };
+
+  // Separate function to handle OCR API request
+  const sendOCRRequest = async (base64Data: string): Promise<string | null> => {
+    try {
+      
       // Call our backend API endpoint for Google Cloud Vision
       const response = await fetch('/api/ocr/google-vision', {
         method: 'POST',
@@ -364,79 +418,81 @@ export default function ScannerPage() {
       });
       
       if (!response.ok) {
-        console.error('Google Vision API call failed:', response.status);
-        // Fallback to Tesseract.js if Google Vision fails
-        return await extractTrackingFromImageTesseract(imageData);
+        const errorText = await response.text();
+        console.error('Google Vision API call failed:', response.status, errorText);
+        throw new Error(`OCR API failed: ${response.status}`);
       }
       
       const result = await response.json();
       console.log('Google Vision OCR Raw Text:', result.text);
       
       if (!result.text) {
-        console.log('No text detected by Google Vision, trying Tesseract fallback');
-        return await extractTrackingFromImageTesseract(imageData);
+        console.log('No text detected by Google Vision');
+        return null;
       }
       
-      // Extract tracking numbers using common patterns
-      const trackingPatterns = [
-        // USPS patterns
-        /\b94\d{20}\b/g,                    // 9400 series (22 digits)
-        /\b92\d{20}\b/g,                    // 9200 series (22 digits)
-        /\b93\d{20}\b/g,                    // 9300 series (22 digits)
-        /\b82\d{8}\b/g,                     // Certified Mail
-        /\b70\d{14}\b/g,                    // Express Mail
-        
-        // UPS patterns
-        /\b1Z[A-Z0-9]{16}\b/g,              // Standard UPS format
-        
-        // FedEx patterns
-        /\b\d{12}\b/g,                      // 12 digit FedEx
-        /\b\d{14}\b/g,                      // 14 digit FedEx
-        /\b\d{20}\b/g,                      // 20 digit FedEx
-        
-        // DHL patterns
-        /\b\d{10,11}\b/g,                   // 10-11 digit DHL
-        
-        // General long number patterns (fallback)
-        /\b\d{15,22}\b/g                    // Any 15-22 digit number
-      ];
-      
-      const cleanText = result.text.replace(/\s+/g, ' ').trim();
-      
-      for (const pattern of trackingPatterns) {
-        const matches = cleanText.match(pattern);
-        if (matches && matches.length > 0) {
-          const trackingNumber = matches[0].replace(/\s/g, '');
-          console.log('Found tracking number via Google Vision:', trackingNumber);
-          return trackingNumber;
-        }
-      }
-      
-      // Try looking for patterns with spaces or dashes
-      const spacedPatterns = [
-        /\b94\d{2}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{2}\b/g,
-        /\b92\d{2}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{2}\b/g,
-        /\b1Z\s?[A-Z0-9]{3}\s?[A-Z0-9]{3}\s?[A-Z0-9]{10}\b/g
-      ];
-      
-      for (const pattern of spacedPatterns) {
-        const matches = cleanText.match(pattern);
-        if (matches && matches.length > 0) {
-          const trackingNumber = matches[0].replace(/[\s-]/g, '');
-          console.log('Found spaced tracking number via Google Vision:', trackingNumber);
-          return trackingNumber;
-        }
-      }
-      
-      console.log('No tracking number patterns found in Google Vision text, trying Tesseract fallback');
-      return await extractTrackingFromImageTesseract(imageData);
+      return extractTrackingFromText(result.text);
       
     } catch (error) {
-      console.error('Google Vision OCR Error:', error);
-      // Fallback to Tesseract.js if Google Vision fails
-      return await extractTrackingFromImageTesseract(imageData);
+      console.error('OCR request error:', error);
+      throw error;
     }
   };
+
+  // Extract tracking numbers from text using common patterns
+  const extractTrackingFromText = (text: string): string | null => {
+    const trackingPatterns = [
+      // USPS patterns
+      /\b94\d{20}\b/g,                    // 9400 series (22 digits)
+      /\b92\d{20}\b/g,                    // 9200 series (22 digits)
+      /\b93\d{20}\b/g,                    // 9300 series (22 digits)
+      /\b82\d{8}\b/g,                     // Certified Mail
+      /\b70\d{14}\b/g,                    // Express Mail
+      
+      // UPS patterns
+      /\b1Z[A-Z0-9]{16}\b/g,              // Standard UPS format
+      
+      // FedEx patterns
+      /\b\d{12}\b/g,                      // 12 digit FedEx
+      /\b\d{14}\b/g,                      // 14 digit FedEx
+      /\b\d{20}\b/g,                      // 20 digit FedEx
+      
+      // DHL patterns
+      /\b\d{10,11}\b/g,                   // 10-11 digit DHL
+      
+      // General long number patterns (fallback)
+      /\b\d{15,22}\b/g                    // Any 15-22 digit number
+    ];
+    
+    const cleanText = text.replace(/\s+/g, ' ').trim();
+    
+    for (const pattern of trackingPatterns) {
+      const matches = cleanText.match(pattern);
+      if (matches && matches.length > 0) {
+        const trackingNumber = matches[0].replace(/\s/g, '');
+        console.log('Found tracking number:', trackingNumber);
+        return trackingNumber;
+      }
+    }
+    
+    // Try looking for patterns with spaces or dashes
+    const spacedPatterns = [
+      /\b94\d{2}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{2}\b/g,
+      /\b92\d{2}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{2}\b/g,
+      /\b1Z\s?[A-Z0-9]{3}\s?[A-Z0-9]{3}\s?[A-Z0-9]{10}\b/g
+    ];
+    
+    for (const pattern of spacedPatterns) {
+      const matches = cleanText.match(pattern);
+      if (matches && matches.length > 0) {
+        const trackingNumber = matches[0].replace(/[\s-]/g, '');
+        console.log('Found spaced tracking number:', trackingNumber);
+        return trackingNumber;
+      }
+    }
+    
+    console.log('No tracking number patterns found in text');
+    return null;
 
   // Fallback Tesseract.js OCR function
   const extractTrackingFromImageTesseract = async (imageData: string): Promise<string | null> => {
@@ -455,59 +511,7 @@ export default function ScannerPage() {
       
       console.log('Tesseract OCR Raw Text:', text);
       
-      // Extract tracking numbers using common patterns
-      const trackingPatterns = [
-        // USPS patterns
-        /\b94\d{20}\b/g,                    // 9400 series (22 digits)
-        /\b92\d{20}\b/g,                    // 9200 series (22 digits)
-        /\b93\d{20}\b/g,                    // 9300 series (22 digits)
-        /\b82\d{8}\b/g,                     // Certified Mail
-        /\b70\d{14}\b/g,                    // Express Mail
-        
-        // UPS patterns
-        /\b1Z[A-Z0-9]{16}\b/g,              // Standard UPS format
-        
-        // FedEx patterns
-        /\b\d{12}\b/g,                      // 12 digit FedEx
-        /\b\d{14}\b/g,                      // 14 digit FedEx
-        /\b\d{20}\b/g,                      // 20 digit FedEx
-        
-        // DHL patterns
-        /\b\d{10,11}\b/g,                   // 10-11 digit DHL
-        
-        // General long number patterns (fallback)
-        /\b\d{15,22}\b/g                    // Any 15-22 digit number
-      ];
-      
-      const cleanText = text.replace(/\s+/g, ' ').trim();
-      
-      for (const pattern of trackingPatterns) {
-        const matches = cleanText.match(pattern);
-        if (matches && matches.length > 0) {
-          const trackingNumber = matches[0].replace(/\s/g, '');
-          console.log('Found tracking number via Tesseract:', trackingNumber);
-          return trackingNumber;
-        }
-      }
-      
-      // Try looking for patterns with spaces or dashes
-      const spacedPatterns = [
-        /\b94\d{2}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{2}\b/g,
-        /\b92\d{2}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{2}\b/g,
-        /\b1Z\s?[A-Z0-9]{3}\s?[A-Z0-9]{3}\s?[A-Z0-9]{10}\b/g
-      ];
-      
-      for (const pattern of spacedPatterns) {
-        const matches = cleanText.match(pattern);
-        if (matches && matches.length > 0) {
-          const trackingNumber = matches[0].replace(/[\s-]/g, '');
-          console.log('Found spaced tracking number via Tesseract:', trackingNumber);
-          return trackingNumber;
-        }
-      }
-      
-      console.log('No tracking number patterns found in Tesseract text');
-      return null;
+      return extractTrackingFromText(text);
       
     } catch (error) {
       console.error('Tesseract OCR Error:', error);
