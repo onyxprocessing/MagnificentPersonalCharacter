@@ -251,10 +251,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               found: true,
               order: {
                 id: record.id,
-                customerName: `${fields.firstname} ${fields.lastname}`,
-                email: fields.email,
+                customerName: `${fields.firstname || ''} ${fields.lastname || ''}`.trim(),
+                email: fields.email || '',
                 completed: Boolean(fields.completed),
-                tracking: fields.tracking,
+                tracking: fields.tracking || '',
                 status: fields.status || 'payment_selection',
                 hasExistingTracking: true
               }
@@ -267,7 +267,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Search for orders with payment_selection status that don't have tracking yet
         const ordersQuery = {
-          filterByFormula: `AND({status} = "payment_selection", {tracking} = "")`,
+          filterByFormula: `AND({status} = "payment_selection", OR({tracking} = "", BLANK({tracking})))`,
           pageSize: 50,
           sort: [{field: "created", direction: "desc"}]
         };
@@ -287,8 +287,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               found: true,
               order: {
                 id: record.id,
-                customerName: `${fields.firstname} ${fields.lastname}`,
-                email: fields.email,
+                customerName: `${fields.firstname || ''} ${fields.lastname || ''}`.trim(),
+                email: fields.email || '',
                 completed: Boolean(fields.completed),
                 tracking: fields.tracking || null,
                 status: fields.status || 'payment_selection',
@@ -301,81 +301,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       } catch (airtableError) {
         console.error('Airtable search failed:', airtableError);
+        console.error('Airtable error details:', airtableError.message || 'Unknown Airtable error');
         // Continue to fallback storage search
       }
 
       // Fallback to using storage search method
       console.log(`Airtable search failed or no results, trying storage search for ${trackingNumber}`);
       
-      const orders = await storage.getOrders({ 
-        search: trackingNumber, 
-        limit: 20 
-      });
+      try {
+        const orders = await storage.getOrders({ 
+          search: trackingNumber, 
+          limit: 20 
+        });
 
-      console.log(`Storage search found ${orders.length} orders`);
+        console.log(`Storage search found ${orders.length} orders`);
 
-      if (orders.length > 0) {
-        // Prefer orders that don't have tracking assigned yet
-        const orderWithoutTracking = orders.find(order => 
-          order.status === 'payment_selection' && 
+        if (orders.length > 0) {
+          // Prefer orders that don't have tracking assigned yet
+          const orderWithoutTracking = orders.find(order => 
+            order.status === 'payment_selection' && 
+            !order.completed && 
+            (!order.tracking || order.tracking.trim() === '')
+          );
+
+          const order = orderWithoutTracking || orders[0];
+          console.log(`Found order ${order.id} via storage search for ${trackingNumber}`);
+          
+          return res.json({
+            success: true,
+            data: {
+              found: true,
+              order: {
+                id: order.id,
+                customerName: `${order.firstname || ''} ${order.lastname || ''}`.trim(),
+                email: order.email || '',
+                completed: order.completed,
+                tracking: order.tracking,
+                status: order.status,
+                needsTrackingAssignment: !order.tracking
+              }
+            }
+          });
+        }
+
+        // Final fallback - get any orders that need tracking assignment
+        const allOrders = await storage.getOrders({ 
+          status: 'payment_selection',
+          limit: 100
+        });
+
+        // Filter for orders that don't have tracking yet
+        const ordersWithoutTracking = allOrders.filter(order => 
           !order.completed && 
           (!order.tracking || order.tracking.trim() === '')
         );
 
-        const order = orderWithoutTracking || orders[0];
-        console.log(`Found order ${order.id} via storage search for ${trackingNumber}`);
-        
-        return res.json({
-          success: true,
-          data: {
-            found: true,
-            order: {
-              id: order.id,
-              customerName: `${order.firstname} ${order.lastname}`,
-              email: order.email,
-              completed: order.completed,
-              tracking: order.tracking,
-              status: order.status,
-              needsTrackingAssignment: !order.tracking
+        console.log(`Found ${ordersWithoutTracking.length} orders without tracking (payment_selection status)`);
+
+        if (ordersWithoutTracking.length > 0) {
+          const order = ordersWithoutTracking[0];
+          console.log(`Suggesting order ${order.id} for tracking ${trackingNumber}`);
+          
+          return res.json({
+            success: true,
+            data: {
+              found: true,
+              order: {
+                id: order.id,
+                customerName: `${order.firstname || ''} ${order.lastname || ''}`.trim(),
+                email: order.email || '',
+                completed: order.completed,
+                tracking: order.tracking,
+                status: order.status,
+                isPending: true,
+                needsTrackingAssignment: true
+              }
             }
-          }
-        });
-      }
+          });
+        }
 
-      // Final fallback - get any orders that need tracking assignment
-      const allOrders = await storage.getOrders({ 
-        status: 'payment_selection',
-        limit: 100
-      });
-
-      // Filter for orders that don't have tracking yet
-      const ordersWithoutTracking = allOrders.filter(order => 
-        !order.completed && 
-        (!order.tracking || order.tracking.trim() === '')
-      );
-
-      console.log(`Found ${ordersWithoutTracking.length} orders without tracking (payment_selection status)`);
-
-      if (ordersWithoutTracking.length > 0) {
-        const order = ordersWithoutTracking[0];
-        console.log(`Suggesting order ${order.id} for tracking ${trackingNumber}`);
-        
-        return res.json({
-          success: true,
-          data: {
-            found: true,
-            order: {
-              id: order.id,
-              customerName: `${order.firstname} ${order.lastname}`,
-              email: order.email,
-              completed: order.completed,
-              tracking: order.tracking,
-              status: order.status,
-              isPending: true,
-              needsTrackingAssignment: true
-            }
-          }
-        });
+      } catch (storageError) {
+        console.error('Storage search failed:', storageError);
+        console.error('Storage error details:', storageError.message || 'Unknown storage error');
       }
 
       console.log(`No orders found for tracking number ${trackingNumber}`);
@@ -388,7 +395,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
     } catch (error) {
-      console.error('Error processing tracking number:', error);
+      console.error('Scanner endpoint error:', error);
+      console.error('Error stack:', error.stack);
       return res.status(500).json({
         success: false,
         message: 'Failed to process tracking number: ' + (error instanceof Error ? error.message : 'Unknown error')
