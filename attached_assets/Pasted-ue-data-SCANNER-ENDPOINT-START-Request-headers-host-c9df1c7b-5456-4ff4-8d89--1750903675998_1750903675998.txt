@@ -1,0 +1,54 @@
+ue,"data":[{…
+=== SCANNER ENDPOINT START ===
+Request headers: {
+  host: 'c9df1c7b-5456-4ff4-8d89-6fdf603e56a0-00-1wfqlsatnlwc1.janeway.replit.dev',
+  'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36',
+  'content-length': '43',
+  accept: '*/*',
+  'accept-encoding': 'gzip, deflate, br, zstd',
+  'accept-language': 'en-US,en;q=0.9',
+  'content-type': 'application/json',
+  origin: 'https://c9df1c7b-5456-4ff4-8d89-6fdf603e56a0-00-1wfqlsatnlwc1.janeway.replit.dev',
+  referer: 'https://c9df1c7b-5456-4ff4-8d89-6fdf603e56a0-00-1wfqlsatnlwc1.janeway.replit.dev/scanner',
+  'sec-ch-ua': '"Google Chrome";v="137", "Chromium";v="137", "Not/A)Brand";v="24"',
+  'sec-ch-ua-mobile': '?0',
+  'sec-ch-ua-platform': '"Windows"',
+  'sec-fetch-dest': 'empty',
+  'sec-fetch-mode': 'cors',
+  'sec-fetch-site': 'same-origin',
+  'sec-fetch-storage-access': 'active',
+  'x-forwarded-for': '212.15.83.61, 10.83.9.168',
+  'x-forwarded-proto': 'https',
+  'x-replit-user-bio': '',
+  'x-replit-user-id': '',
+  'x-replit-user-name': '',
+  'x-replit-user-profile-image': '',
+  'x-replit-user-roles': '',
+  'x-replit-user-teams': '',
+  'x-replit-user-url': ''
+}
+Request body: { trackingNumber: '9405530109355172667039' }
+Scanner: Looking for tracking number: 9405530109355172667039
+Airtable client available: function
+Searching Airtable tracking field with formula: {tracking} = "9405530109355172667039"
+Query object: {"filterByFormula":"{tracking} = \"9405530109355172667039\"","maxRecords":10}
+Found 1 Airtable records with tracking number 9405530109355172667039
+Found order recwitvda4LPtF4SE for customer Jack Spicer with existing tracking
+Sending response: {
+  "success": true,
+  "data": {
+    "found": true,
+    "order": {
+      "id": "recwitvda4LPtF4SE",
+      "customerName": "Jack Spicer",
+      "email": "jack@lendousa.com",
+      "completed": false,
+      "tracking": "9405530109355172667039",
+      "status": "payment_selection",
+      "hasExistingTracking": true,
+      "total": 70
+    }
+  }
+}
+=== SCANNER ENDPOINT END ===
+2:07:35 AM [express] POST /api/scanner/process-tracking 200 in 207ms :: {"success":true,"data":{"fou…
