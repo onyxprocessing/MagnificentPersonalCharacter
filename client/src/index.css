@@ -23,14 +23,14 @@
   --destructive-foreground: 210 40% 98%;
   --ring: 216 12% 84%;
   --radius: 0.5rem;
-  
+
   /* Chart colors for consistent styling */
   --chart-1: 211 100% 52%;
   --chart-2: 47 96% 55%;
   --chart-3: 201 94% 48%;
   --chart-4: 168 76% 42%;
   --chart-5: 262 83% 58%;
-  
+
   /* Sidebar specific colors */
   --sidebar-background: 222 47% 11%;
   --sidebar-foreground: 210 40% 98%;
@@ -62,7 +62,7 @@
   --destructive: 0 92% 40%;
   --destructive-foreground: 210 40% 98%;
   --ring: 216 15% 19%;
-  
+
   /* Chart colors - same in dark mode for consistency */
   --chart-1: 211 100% 52%;
   --chart-2: 47 96% 55%;
@@ -149,3 +149,40 @@
 .status-badge-unpaid {
   @apply bg-red-100 text-red-600 font-semibold text-xs uppercase;
 }
+
+/* Custom scrollbar for webkit browsers */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--muted));
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground));
+  }
+
+  /* Mobile camera scanner styles */
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Ensure video fills container properly on mobile */
+  video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover;
+  }
+
+  /* Prevent iOS zoom on button tap */
+  @media screen and (max-width: 768px) {
+    button {
+      touch-action: manipulation;
+    }
+  }

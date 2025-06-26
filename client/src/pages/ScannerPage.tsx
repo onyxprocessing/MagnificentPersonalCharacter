@@ -552,23 +552,24 @@ export default function ScannerPage() {
         </main>
       </div>
 
-      {/* Camera Modal */}
+      {/* Camera Modal - Mobile Optimized */}
       {isCameraModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75">
-          <div className="relative w-full h-full max-w-lg mx-4 bg-white rounded-lg overflow-hidden">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="text-lg font-semibold">📱 Package Scanner</h3>
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-95 flex flex-col">
+          {/* Mobile-First Full Screen Layout */}
+          <div className="flex-1 flex flex-col bg-white">
+            {/* Compact Header for Mobile */}
+            <div className="flex items-center justify-between p-3 border-b bg-white">
+              <h3 className="text-base font-semibold">📱 Scanner</h3>
               <Button variant="ghost" size="sm" onClick={closeCameraModal}>
                 <X className="w-4 h-4" />
               </Button>
             </div>
 
-            {/* Camera Feed */}
-            <div className="relative">
+            {/* Camera Feed - Takes most of the screen */}
+            <div className="flex-1 relative bg-black">
               {/* Camera Status */}
               {isScanning && (
-                <div className="absolute top-2 left-2 z-10 bg-green-500 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
+                <div className="absolute top-3 left-3 z-10 bg-green-500 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
                   <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
                   LIVE
                 </div>
@@ -581,9 +582,8 @@ export default function ScannerPage() {
                 muted
                 controls={false}
                 webkit-playsinline=""
-                className="w-full h-80 bg-black object-cover"
+                className="w-full h-full bg-black object-cover"
                 style={{
-                  minHeight: '320px',
                   backgroundColor: '#000000'
                 }}
                 onClick={() => {
@@ -594,58 +594,64 @@ export default function ScannerPage() {
                 }}
               />
 
-              {/* Scanning Frame Overlay */}
-              <div className="absolute inset-0 pointer-events-none">
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-32 border-2 border-blue-500 rounded bg-blue-500/10">
-                  <div className="text-center text-xs text-blue-600 mt-12 font-semibold">
+              {/* Scanning Frame Overlay - Responsive */}
+              <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                <div className="w-72 h-36 sm:w-80 sm:h-40 border-2 border-blue-500 rounded bg-blue-500/10 flex items-center justify-center">
+                  <div className="text-center text-xs text-blue-600 font-semibold bg-white/90 px-2 py-1 rounded">
                     📦 Point at tracking number
                   </div>
                 </div>
               </div>
 
-              {/* Instructions Overlay */}
-              <div className="absolute bottom-2 left-2 right-2 bg-black/80 text-white text-xs p-3 rounded">
+              {/* Instructions Overlay - Bottom */}
+              <div className="absolute bottom-20 left-3 right-3 bg-black/80 text-white text-xs p-3 rounded">
                 <div className="text-center">
-                  📱 <strong>iOS Users:</strong> If video appears black, tap the video area to start camera
+                  📱 <strong>iOS:</strong> Tap video if camera appears black
                 </div>
               </div>
 
-              {/* Debug info */}
-              <div className="absolute top-2 right-2 bg-black/70 text-white text-xs p-1 rounded">
+              {/* Debug info - Top Right */}
+              <div className="absolute top-3 right-3 bg-black/70 text-white text-xs p-1 rounded">
                 {videoRef.current?.videoWidth && videoRef.current?.videoHeight ? 
                   `${videoRef.current.videoWidth}x${videoRef.current.videoHeight}` : 
-                  'Initializing...'}
+                  'Starting...'}
               </div>
             </div>
 
-            {/* Modal Footer with Controls */}
-            <div className="p-4 space-y-3">
-              {/* Take Picture Button */}
+            {/* Fixed Bottom Controls - Always Visible */}
+            <div className="bg-white border-t p-4 space-y-3 safe-bottom">
+              {/* Take Picture Button - Large and Prominent */}
               <Button 
                 onClick={captureImage} 
                 disabled={isProcessing || !isScanning} 
-                className="w-full h-12 text-lg bg-blue-600 hover:bg-blue-700"
+                className="w-full h-14 text-lg bg-blue-600 hover:bg-blue-700 font-semibold"
               >
-                <Package className="w-5 h-5 mr-2" />
-                {isProcessing ? '🔄 Processing...' : '📸 Take Picture of Label'}
+                <Package className="w-6 h-6 mr-2" />
+                {isProcessing ? '🔄 Processing...' : '📸 Take Picture'}
               </Button>
 
-              {/* Close Button */}
-              <Button 
-                variant="outline" 
-                onClick={closeCameraModal} 
-                className="w-full"
-              >
-                Close Scanner
-              </Button>
-
-              {/* Camera Status Text */}
-              <div className="text-center text-sm text-gray-600">
-                {isScanning ? (
-                  <span className="text-green-600">✅ Camera Active - Point at package label</span>
-                ) : (
-                  <span className="text-orange-600">⏳ Starting camera...</span>
-                )}
+              {/* Status Row */}
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-gray-600">
+                  {isScanning ? (
+                    <span className="text-green-600 flex items-center gap-1">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                      Camera Ready
+                    </span>
+                  ) : (
+                    <span className="text-orange-600">⏳ Starting...</span>
+                  )}
+                </div>
+                
+                {/* Close Button - Secondary */}
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={closeCameraModal}
+                  className="px-4"
+                >
+                  Close
+                </Button>
               </div>
             </div>
           </div>
