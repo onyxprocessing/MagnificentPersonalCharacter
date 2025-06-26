@@ -493,6 +493,7 @@ export default function ScannerPage() {
     
     console.log('No tracking number patterns found in text');
     return null;
+  };
 
   // Fallback Tesseract.js OCR function
   const extractTrackingFromImageTesseract = async (imageData: string): Promise<string | null> => {
