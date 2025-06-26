@@ -741,7 +741,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     emailMatch: true,
                     amountMatch: amountsMatch(expectedTotal, paymentAmount),
                     nameMatch: namesMatch(customerName, customer.name || ''),
-                    matchScore: this.calculateMatchScore(true, amountsMatch(expectedTotal, paymentAmount), namesMatch(customerName, customer.name || ''))
+                    matchScore: calculateMatchScore(true, amountsMatch(expectedTotal, paymentAmount), namesMatch(customerName, customer.name || ''))
                   });
                 }
               }
@@ -782,7 +782,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 amountMatch,
                 nameMatch,
                 paymentName,
-                matchScore: this.calculateMatchScore(true, amountMatch, nameMatch)
+                matchScore: calculateMatchScore(true, amountMatch, nameMatch)
               });
             }
           }
