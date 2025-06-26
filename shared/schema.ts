@@ -173,6 +173,8 @@ export async function apiRequest(method: string, url: string, data?: any): Promi
 
   try {
     const response = await fetch(url, config);
+    console.log('Raw response status:', response.status);
+    console.log('Raw response headers:', response.headers.get('content-type'));
 
     if (!response.ok) {
       const errorData = await response.text();
@@ -180,29 +182,12 @@ export async function apiRequest(method: string, url: string, data?: any): Promi
       throw new Error(`HTTP ${response.status}: ${errorData}`);
     }
 
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-      const textResponse = await response.text();
-      console.error('Non-JSON response received:', textResponse);
-      throw new Error('Server returned non-JSON response');
-    }
-
     const result = await response.json();
-    console.log('API Response:', result);
-
-    // Ensure we're returning a valid object
-    if (!result) {
-      console.error('Empty response received from server');
-      throw new Error('Empty response from server');
-    }
+    console.log('API Response parsed:', result);
 
     return result;
   } catch (error) {
     console.error('API Request Error:', error);
-    if (error instanceof Error) {
-      throw error;
-    } else {
-      throw new Error('Network error occurred');
-    }
+    throw error;
   }
 }
