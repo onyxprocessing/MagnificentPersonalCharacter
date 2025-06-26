@@ -555,18 +555,18 @@ export default function ScannerPage() {
       {/* Camera Modal - Mobile Optimized */}
       {isCameraModalOpen && (
         <div className="fixed inset-0 z-50 bg-black bg-opacity-95 flex flex-col">
-          {/* Mobile-First Full Screen Layout */}
-          <div className="flex-1 flex flex-col bg-white">
+          {/* Mobile-First Full Screen Layout with proper spacing */}
+          <div className="flex-1 flex flex-col bg-white max-h-screen overflow-hidden">
             {/* Compact Header for Mobile */}
-            <div className="flex items-center justify-between p-3 border-b bg-white">
+            <div className="flex items-center justify-between p-3 border-b bg-white shrink-0">
               <h3 className="text-base font-semibold">📱 Scanner</h3>
               <Button variant="ghost" size="sm" onClick={closeCameraModal}>
                 <X className="w-4 h-4" />
               </Button>
             </div>
 
-            {/* Camera Feed - Takes most of the screen */}
-            <div className="flex-1 relative bg-black">
+            {/* Camera Feed - Calculated height to leave room for controls */}
+            <div className="relative bg-black" style={{ height: 'calc(100vh - 180px)' }}>
               {/* Camera Status */}
               {isScanning && (
                 <div className="absolute top-3 left-3 z-10 bg-green-500 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
@@ -596,15 +596,15 @@ export default function ScannerPage() {
 
               {/* Scanning Frame Overlay - Responsive */}
               <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                <div className="w-72 h-36 sm:w-80 sm:h-40 border-2 border-blue-500 rounded bg-blue-500/10 flex items-center justify-center">
+                <div className="w-64 h-32 sm:w-72 sm:h-36 border-2 border-blue-500 rounded bg-blue-500/10 flex items-center justify-center">
                   <div className="text-center text-xs text-blue-600 font-semibold bg-white/90 px-2 py-1 rounded">
                     📦 Point at tracking number
                   </div>
                 </div>
               </div>
 
-              {/* Instructions Overlay - Bottom */}
-              <div className="absolute bottom-20 left-3 right-3 bg-black/80 text-white text-xs p-3 rounded">
+              {/* Instructions Overlay - Moved higher to avoid button overlap */}
+              <div className="absolute bottom-8 left-3 right-3 bg-black/80 text-white text-xs p-2 rounded">
                 <div className="text-center">
                   📱 <strong>iOS:</strong> Tap video if camera appears black
                 </div>
@@ -618,40 +618,47 @@ export default function ScannerPage() {
               </div>
             </div>
 
-            {/* Fixed Bottom Controls - Always Visible */}
-            <div className="bg-white border-t p-4 space-y-3 safe-bottom">
-              {/* Take Picture Button - Large and Prominent */}
-              <Button 
-                onClick={captureImage} 
-                disabled={isProcessing || !isScanning} 
-                className="w-full h-14 text-lg bg-blue-600 hover:bg-blue-700 font-semibold"
-              >
-                <Package className="w-6 h-6 mr-2" />
-                {isProcessing ? '🔄 Processing...' : '📸 Take Picture'}
-              </Button>
-
-              {/* Status Row */}
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-gray-600">
-                  {isScanning ? (
-                    <span className="text-green-600 flex items-center gap-1">
-                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                      Camera Ready
-                    </span>
-                  ) : (
-                    <span className="text-orange-600">⏳ Starting...</span>
-                  )}
-                </div>
-                
-                {/* Close Button - Secondary */}
+            {/* Fixed Bottom Controls - Always Visible with safe area */}
+            <div className="bg-white border-t shrink-0" style={{ 
+              paddingBottom: 'max(16px, env(safe-area-inset-bottom))',
+              paddingTop: '16px',
+              paddingLeft: '16px', 
+              paddingRight: '16px'
+            }}>
+              <div className="space-y-3 max-w-sm mx-auto">
+                {/* Take Picture Button - Large and Prominent */}
                 <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={closeCameraModal}
-                  className="px-4"
+                  onClick={captureImage} 
+                  disabled={isProcessing || !isScanning} 
+                  className="w-full h-12 text-base bg-blue-600 hover:bg-blue-700 font-semibold shadow-lg"
                 >
-                  Close
+                  <Package className="w-5 h-5 mr-2" />
+                  {isProcessing ? '🔄 Processing...' : '📸 Take Picture of Label'}
                 </Button>
+
+                {/* Status and Close Row - Compact */}
+                <div className="flex items-center justify-between text-sm">
+                  <div className="text-gray-600">
+                    {isScanning ? (
+                      <span className="text-green-600 flex items-center gap-1">
+                        <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                        Ready
+                      </span>
+                    ) : (
+                      <span className="text-orange-600">⏳ Starting</span>
+                    )}
+                  </div>
+                  
+                  {/* Close Button - Compact */}
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={closeCameraModal}
+                    className="h-8 px-3 text-gray-500"
+                  >
+                    Close
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
