@@ -61,19 +61,19 @@ export const getQueryFn: <T>(options: {
       credentials: "include",
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`API Error ${response.status}:`, errorText);
-      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+      return null;
+    }
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error(`API Error ${res.status}:`, errorText);
+      throw new Error(`HTTP error! status: ${res.status}, message: ${errorText}`);
     }
 
     const jsonResponse = await res.json();
     console.log('API Response:', jsonResponse);
     return jsonResponse;
-
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      return null;
-    }
 
     await throwIfResNotOk(res);
     return await res.json();
