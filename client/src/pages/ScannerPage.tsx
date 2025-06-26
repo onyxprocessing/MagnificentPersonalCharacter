@@ -301,17 +301,124 @@ export default function ScannerPage() {
     }
   };
 
-  // Extract tracking number from image (simplified OCR simulation)
-  const extractTrackingFromImage = async (imageData: string): Promise<string | null> => {
-    // This is a simplified version. In production, you'd use proper OCR
-    // For now, we'll return null and rely on manual entry
-    // You could integrate with services like:
-    // - Tesseract.js for client-side OCR
-    // - Google Vision API
-    // - AWS Textract
-    // - Azure Computer Vision
+  // Extract tracking number using simple image processing and pattern recognition
+  const extractTrackingFromImageSimple = async (imageData: string): Promise<string | null> => {
+    try {
+      // Convert image to canvas for processing
+      const img = new Image();
+      img.src = imageData;
+      
+      await new Promise((resolve) => {
+        img.onload = resolve;
+      });
+      
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return null;
+      
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+      
+      // Convert to grayscale and increase contrast
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+      
+      for (let i = 0; i < data.length; i += 4) {
+        const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+        const contrast = gray > 128 ? 255 : 0; // High contrast
+        data[i] = contrast;     // red
+        data[i + 1] = contrast; // green
+        data[i + 2] = contrast; // blue
+      }
+      
+      ctx.putImageData(imageData, 0, 0);
+      
+      // For now, return null - this would need more advanced image processing
+      // to extract text without a proper OCR library
+      return null;
+      
+    } catch (error) {
+      console.error('Image processing error:', error);
+      return null;
+    }
+  };
 
-    return null; // Placeholder - would implement actual OCR here
+  // Extract tracking number from image using Tesseract.js OCR
+  const extractTrackingFromImage = async (imageData: string): Promise<string | null> => {
+    try {
+      // Dynamic import to avoid loading Tesseract unless needed
+      const Tesseract = await import('tesseract.js');
+      
+      console.log('Starting OCR processing...');
+      
+      // Configure Tesseract for better tracking number recognition
+      const { data: { text } } = await Tesseract.recognize(imageData, 'eng', {
+        logger: m => console.log('OCR Progress:', m),
+        tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ ',
+        tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT
+      });
+      
+      console.log('OCR Raw Text:', text);
+      
+      // Extract tracking numbers using common patterns
+      const trackingPatterns = [
+        // USPS patterns
+        /\b94\d{20}\b/g,                    // 9400 series (22 digits)
+        /\b92\d{20}\b/g,                    // 9200 series (22 digits)
+        /\b93\d{20}\b/g,                    // 9300 series (22 digits)
+        /\b82\d{8}\b/g,                     // Certified Mail
+        /\b70\d{14}\b/g,                    // Express Mail
+        
+        // UPS patterns
+        /\b1Z[A-Z0-9]{16}\b/g,              // Standard UPS format
+        
+        // FedEx patterns
+        /\b\d{12}\b/g,                      // 12 digit FedEx
+        /\b\d{14}\b/g,                      // 14 digit FedEx
+        /\b\d{20}\b/g,                      // 20 digit FedEx
+        
+        // DHL patterns
+        /\b\d{10,11}\b/g,                   // 10-11 digit DHL
+        
+        // General long number patterns (fallback)
+        /\b\d{15,22}\b/g                    // Any 15-22 digit number
+      ];
+      
+      const cleanText = text.replace(/\s+/g, ' ').trim();
+      
+      for (const pattern of trackingPatterns) {
+        const matches = cleanText.match(pattern);
+        if (matches && matches.length > 0) {
+          const trackingNumber = matches[0].replace(/\s/g, '');
+          console.log('Found tracking number:', trackingNumber);
+          return trackingNumber;
+        }
+      }
+      
+      // Try looking for patterns with spaces or dashes
+      const spacedPatterns = [
+        /\b94\d{2}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{2}\b/g,
+        /\b92\d{2}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{2}\b/g,
+        /\b1Z\s?[A-Z0-9]{3}\s?[A-Z0-9]{3}\s?[A-Z0-9]{10}\b/g
+      ];
+      
+      for (const pattern of spacedPatterns) {
+        const matches = cleanText.match(pattern);
+        if (matches && matches.length > 0) {
+          const trackingNumber = matches[0].replace(/[\s-]/g, '');
+          console.log('Found spaced tracking number:', trackingNumber);
+          return trackingNumber;
+        }
+      }
+      
+      console.log('No tracking number patterns found in OCR text');
+      return null;
+      
+    } catch (error) {
+      console.error('OCR Error:', error);
+      return null;
+    }
   };
 
   // Process tracking number (either from scan or manual entry)
@@ -633,7 +740,7 @@ export default function ScannerPage() {
                   className="w-full h-12 text-base bg-blue-600 hover:bg-blue-700 font-semibold shadow-lg"
                 >
                   <Package className="w-5 h-5 mr-2" />
-                  {isProcessing ? '🔄 Processing...' : '📸 Take Picture of Label'}
+                  {isProcessing ? '🔄 Reading Text...' : '📸 Take Picture of Label'}
                 </Button>
 
                 {/* Status and Close Row - Compact */}

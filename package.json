@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@easypost/api": "^8.2.0",
+    "@google-cloud/vision": "^5.2.0",
     "@hookform/resolvers": "^3.10.0",
     "@jridgewell/trace-mapping": "^0.3.25",
     "@neondatabase/serverless": "^0.10.4",
@@ -82,6 +83,7 @@
     "stripe": "^18.2.1",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
+    "tesseract.js": "^6.0.1",
     "tw-animate-css": "^1.2.5",
     "vaul": "^1.1.2",
     "wouter": "^3.7.0",
