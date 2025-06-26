@@ -213,10 +213,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Scanner endpoint for tracking number lookup
   app.post('/api/scanner/process-tracking', async (req, res) => {
+    console.log('=== SCANNER ENDPOINT START ===');
+    console.log('Request headers:', req.headers);
+    console.log('Request body:', req.body);
+    
     try {
       const { trackingNumber } = req.body;
 
       if (!trackingNumber) {
+        console.log('Missing tracking number, returning 400');
         return res.status(400).json({
           success: false,
           message: 'Tracking number is required'
@@ -431,17 +436,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log(`No orders found for tracking number ${trackingNumber}`);
-      return res.json({
+      const finalResponse = {
         success: true,
         data: {
           found: false,
           message: 'No matching orders found for this tracking number'
         }
-      });
+      };
+      
+      console.log('=== FINAL RESPONSE (NOT FOUND) ===');
+      console.log('Response being sent:', JSON.stringify(finalResponse, null, 2));
+      console.log('Response headers will be:', res.getHeaders());
+      
+      res.setHeader('Content-Type', 'application/json');
+      return res.json(finalResponse);
 
     } catch (error) {
+      console.error('=== SCANNER ENDPOINT ERROR ===');
       console.error('Scanner endpoint error:', error);
       console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+      console.error('Request was for tracking number:', req.body?.trackingNumber);
       
       // Provide a more detailed error message
       let errorMessage = 'Failed to process tracking number';
@@ -453,11 +467,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         errorMessage += ': Unknown error occurred';
       }
 
-      return res.status(500).json({
+      const errorResponse = {
         success: false,
         message: errorMessage,
         error: error instanceof Error ? error.message : String(error)
-      });
+      };
+
+      console.log('=== ERROR RESPONSE ===');
+      console.log('Error response being sent:', JSON.stringify(errorResponse, null, 2));
+      
+      res.setHeader('Content-Type', 'application/json');
+      return res.status(500).json(errorResponse);
+    } finally {
+      console.log('=== SCANNER ENDPOINT END ===');
     }
   });
 

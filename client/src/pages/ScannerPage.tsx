@@ -620,9 +620,12 @@ export default function ScannerPage() {
           timestamp: new Date()
         });
 
+        // Safely access nested properties
+        const message = response?.data?.message || `No pending order found for tracking number ${trackingNumber}`;
+
         toast({
           title: "Order Not Found",
-          description: response.data.message || `No pending order found for tracking number ${trackingNumber}`,
+          description: message,
           variant: "destructive"
         });
       }
@@ -632,11 +635,23 @@ export default function ScannerPage() {
       // Check if the error has a meaningful message
       let errorMessage = "Error processing the tracking number. Please try again.";
 
-      if (error && typeof error === 'object' && 'message' in error) {
-        errorMessage = error.message as string;
+      // Handle different error types more safely
+      if (error && typeof error === 'object') {
+        if ('message' in error && typeof error.message === 'string') {
+          errorMessage = error.message;
+        } else if ('error' in error && typeof error.error === 'string') {
+          errorMessage = error.error;
+        }
       } else if (typeof error === 'string') {
         errorMessage = error;
       }
+
+      // Add scanned package for failed processing too
+      addScannedPackage({
+        trackingNumber,
+        status: 'not_found',
+        timestamp: new Date()
+      });
 
       toast({
         title: "Processing Error",
