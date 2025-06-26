@@ -247,7 +247,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           console.log(`Found order ${record.id} for customer ${fields.firstname} ${fields.lastname} with existing tracking`);
           
-          return res.json({
+          const response = {
             success: true,
             data: {
               found: true,
@@ -262,7 +262,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 total: fields.total || '0'
               }
             }
-          });
+          };
+          
+          console.log('Sending response:', JSON.stringify(response, null, 2));
+          return res.json(response);
         }
 
         // Also try searching with lowercase field name in case of case sensitivity
@@ -283,7 +286,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           console.log(`Found order ${record.id} for customer ${fields.firstname} ${fields.lastname} with existing tracking (capitalized field)`);
           
-          return res.json({
+          const response = {
             success: true,
             data: {
               found: true,
@@ -298,7 +301,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 total: fields.total || '0'
               }
             }
-          });
+          };
+          
+          console.log('Sending response:', JSON.stringify(response, null, 2));
+          return res.json(response);
         }
 
         // If no tracking field match, try broader search in Airtable
