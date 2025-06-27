@@ -61,6 +61,14 @@ export default function OrderDetailModal({
       createdAt?: string;
     };
     stripeStatus?: string;
+    matchDetails?: {
+      emailMatch?: boolean;
+      amountMatch?: boolean;
+      nameMatch?: boolean;
+      expectedAmount?: number;
+      actualAmount?: number;
+      amountDifference?: number;
+    };
     error?: string;
   }>({
     loading: false,
@@ -75,15 +83,22 @@ export default function OrderDetailModal({
 
     try {
       const res = await apiRequest('GET', `/api/orders/${order.id}/payment-status`);
+      
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      }
+      
       const data = await res.json();
+      console.log('Payment verification response:', data);
 
       if (data.success) {
         setPaymentStatus({
           loading: false,
-          paymentVerified: data.data.paymentVerified,
-          message: data.data.message,
+          paymentVerified: data.data.paymentVerified || false,
+          message: data.data.message || 'Payment verification completed',
           paymentDetails: data.data.paymentDetails,
-          stripeStatus: data.data.stripeStatus
+          stripeStatus: data.data.stripeStatus,
+          matchDetails: data.data.matchDetails
         });
       } else {
         setPaymentStatus({
@@ -656,19 +671,57 @@ export default function OrderDetailModal({
                       </div>
                     </div>
                   ) : (
-                    <div className="border-l-4 border-blue-500 pl-4">
+                    <div className={`border-l-4 pl-4 ${paymentStatus.message?.includes('Payment found but verification incomplete') ? 'border-yellow-500' : 'border-blue-500'}`}>
                       <div className="flex items-center mb-2">
-                        <div className="bg-blue-100 p-1.5 rounded-full mr-3">
-                          <CreditCard className="w-5 h-5 text-blue-600" />
+                        <div className={`p-1.5 rounded-full mr-3 ${paymentStatus.message?.includes('Payment found but verification incomplete') ? 'bg-yellow-100' : 'bg-blue-100'}`}>
+                          <CreditCard className={`w-5 h-5 ${paymentStatus.message?.includes('Payment found but verification incomplete') ? 'text-yellow-600' : 'text-blue-600'}`} />
                         </div>
-                        <h4 className="font-medium text-blue-700">Payment Status</h4>
+                        <h4 className={`font-medium ${paymentStatus.message?.includes('Payment found but verification incomplete') ? 'text-yellow-700' : 'text-blue-700'}`}>Payment Status</h4>
                       </div>
                       <div className="text-sm text-gray-600 ml-11">
-                        <p>{paymentStatus.message || 'Order has payment_selection status, but no Stripe payment ID was found.'}</p>
-                        <p className="mt-2"><span className="font-medium">Order Total:</span> ${getOrderTotal(order)}</p>
-                        <p><span className="font-medium">Status:</span> Ready for payment verification</p>
-                        <p className="mt-2 text-gray-500">Customer: {order.firstname} {order.lastname}</p>
-                        <p className="text-gray-500">Email: {order.email}</p>
+                        <p className="mb-2">{paymentStatus.message || 'Order has payment_selection status, but no Stripe payment ID was found.'}</p>
+                        
+                        {paymentStatus.matchDetails && (
+                          <div className="space-y-1 p-3 bg-gray-50 rounded-md border">
+                            <p className="font-medium text-gray-700 mb-2">Verification Details:</p>
+                            <div className="grid grid-cols-1 gap-1 text-xs">
+                              <p>
+                                <span className="font-medium">Email:</span> 
+                                <span className={`ml-1 ${paymentStatus.matchDetails.emailMatch ? 'text-green-600' : 'text-red-600'}`}>
+                                  {paymentStatus.matchDetails.emailMatch ? '✅ Match' : '❌ No Match'}
+                                </span>
+                              </p>
+                              {paymentStatus.matchDetails.expectedAmount !== undefined && (
+                                <p>
+                                  <span className="font-medium">Amount:</span> 
+                                  <span className={`ml-1 ${paymentStatus.matchDetails.amountMatch ? 'text-green-600' : 'text-red-600'}`}>
+                                    {paymentStatus.matchDetails.amountMatch ? '✅ Match' : 
+                                     `❌ Expected $${paymentStatus.matchDetails.expectedAmount.toFixed(2)}, Found $${paymentStatus.matchDetails.actualAmount?.toFixed(2) || '0.00'}`}
+                                  </span>
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {paymentStatus.paymentDetails && (
+                          <div className="text-sm text-gray-600 space-y-1 pt-2 border-t border-gray-200 mt-2">
+                            <p><span className="font-medium">Amount:</span> ${paymentStatus.paymentDetails.amount?.toFixed(2)}</p>
+                            <p><span className="font-medium">Method:</span> {paymentStatus.paymentDetails.paymentMethod}</p>
+                            <p><span className="font-medium">Date:</span> {paymentStatus.paymentDetails.createdAt ? formatDate(new Date(paymentStatus.paymentDetails.createdAt), true) : 'Unknown'}</p>
+                            <p><span className="font-medium">Status:</span> <span className="text-blue-600 font-medium">{paymentStatus.stripeStatus || 'Found'}</span></p>
+                          </div>
+                        )}
+
+                        {!paymentStatus.paymentDetails && (
+                          <>
+                            <p className="mt-2"><span className="font-medium">Order Total:</span> ${getOrderTotal(order)}</p>
+                            <p><span className="font-medium">Status:</span> Ready for payment verification</p>
+                            <p className="mt-2 text-gray-500">Customer: {order.firstname} {order.lastname}</p>
+                            <p className="text-gray-500">Email: {order.email}</p>
+                          </>
+                        )}
+                        
                         <button 
                           onClick={() => fetchPaymentStatus()} 
                           className="mt-2 px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200"
