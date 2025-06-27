@@ -91,7 +91,8 @@ export default function OrderDetailModal({
       const data = await res.json();
       console.log('Payment verification response:', data);
 
-      if (data.success) {
+      // Always check if the API returned success: true
+      if (data.success && data.data) {
         setPaymentStatus({
           loading: false,
           paymentVerified: data.data.paymentVerified || false,
@@ -101,11 +102,12 @@ export default function OrderDetailModal({
           matchDetails: data.data.matchDetails
         });
       } else {
+        // API returned success: false or malformed response
         setPaymentStatus({
           loading: false,
           paymentVerified: false,
           message: data.message || 'Failed to verify payment with Stripe',
-          error: data.error
+          error: data.error || 'API returned unsuccessful response'
         });
       }
     } catch (error: any) {
@@ -114,7 +116,7 @@ export default function OrderDetailModal({
         loading: false,
         paymentVerified: false,
         message: 'Error connecting to payment verification service',
-        error: error.message || 'Unknown error'
+        error: error.message || 'Network or server error'
       });
     }
   };
