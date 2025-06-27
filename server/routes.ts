@@ -645,7 +645,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
            orderNameClean === paymentNameClean;
   }
 
-  // Stripe payment verification endpoint
+  // Stripe payment verification endpoint - simplified to only match emails
   app.get('/api/orders/:id/payment-status', async (req, res) => {
     try {
       const { id } = req.params;
@@ -659,13 +659,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const customerEmail = order.email?.toLowerCase();
-      const customerName = `${order.firstname || ''} ${order.lastname || ''}`.trim();
-      const expectedTotal = calculateExpectedTotal(order);
 
       console.log(`=== PAYMENT VERIFICATION FOR ORDER ${id} ===`);
-      console.log(`Customer: ${customerName} (${customerEmail})`);
-      console.log(`Order total: $${order.total}, Expected payment: $${expectedTotal.toFixed(2)}`);
-      console.log(`Affiliate code: ${order.affiliateCode || 'None'}`);
+      console.log(`Customer Email: ${customerEmail}`);
 
       if (!customerEmail) {
         return res.json({
@@ -677,177 +673,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // If the order has a Stripe payment ID, use that directly
-      if (order.stripePaymentId) {
-        try {
-          const payment = await stripe.paymentIntents.retrieve(order.stripePaymentId);
-          const paymentAmount = payment.amount / 100;
-          const paymentVerified = payment.status === 'succeeded' && amountsMatch(expectedTotal, paymentAmount);
+      try {
+        // Search payments directly by receipt email
+        const payments = await stripe.paymentIntents.list({
+          limit: 150
+        });
 
-          console.log(`Direct payment lookup: ${payment.id}, Status: ${payment.status}, Amount: $${paymentAmount}`);
+        console.log(`Searching ${payments.data.length} recent payments for email match...`);
+
+        let emailMatch = null;
+        for (const payment of payments.data) {
+          if (payment.status === 'succeeded' && payment.receipt_email === customerEmail) {
+            console.log(`Found payment ${payment.id} with matching email ${customerEmail}`);
+            emailMatch = payment;
+            break; // Take the first match
+          }
+        }
+
+        if (emailMatch) {
+          const paymentAmount = emailMatch.amount / 100;
+          
+          // Cache the payment status
+          paymentStatusCache.set(id, true);
 
           return res.json({
             success: true,
             data: {
-              paymentVerified,
-              stripeStatus: payment.status,
+              paymentVerified: true,
+              stripeStatus: emailMatch.status,
               paymentDetails: {
                 amount: paymentAmount,
-                currency: payment.currency,
-                paymentMethod: payment.payment_method_types?.[0] || 'unknown',
-                createdAt: new Date(payment.created * 1000).toISOString(),
+                currency: emailMatch.currency,
+                paymentMethod: emailMatch.payment_method_types?.[0] || 'unknown',
+                createdAt: new Date(emailMatch.created * 1000).toISOString(),
               },
-              matchDetails: {
-                emailMatch: payment.receipt_email === customerEmail,
-                amountMatch: amountsMatch(expectedTotal, paymentAmount),
-                expectedAmount: expectedTotal,
-                actualAmount: paymentAmount,
-                amountDifference: Math.abs(expectedTotal - paymentAmount)
-              }
-            }
-          });
-        } catch (stripeError: any) {
-          console.error('Stripe error when retrieving by ID:', stripeError);
-        }
-      }
-
-      try {
-        let bestMatch = null;
-        let allMatches: any[] = [];
-
-        // First, try to find Stripe customers with matching email
-        try {
-          const customers = await stripe.customers.list({
-            email: customerEmail,
-            limit: 10
-          });
-
-          if (customers.data.length > 0) {
-            console.log(`Found ${customers.data.length} Stripe customers with email ${customerEmail}`);
-            
-            // Get payments for each customer
-            for (const customer of customers.data) {
-              const customerPayments = await stripe.paymentIntents.list({
-                customer: customer.id,
-                limit: 20
-              });
-
-              for (const payment of customerPayments.data) {
-                if (payment.status === 'succeeded') {
-                  const paymentAmount = payment.amount / 100;
-                  allMatches.push({
-                    payment,
-                    paymentAmount,
-                    emailMatch: true,
-                    amountMatch: amountsMatch(expectedTotal, paymentAmount),
-                    nameMatch: namesMatch(customerName, customer.name || ''),
-                    matchScore: calculateMatchScore(true, amountsMatch(expectedTotal, paymentAmount), namesMatch(customerName, customer.name || ''))
-                  });
-                }
-              }
-            }
-          }
-        } catch (error: any) {
-          console.log('Error searching Stripe customers:', error.message);
-        }
-
-        // Also search payments directly by receipt email
-        try {
-          const payments = await stripe.paymentIntents.list({
-            limit: 150
-          });
-
-          console.log(`Searching ${payments.data.length} recent payments for email match...`);
-
-          for (const payment of payments.data) {
-            if (payment.status === 'succeeded' && payment.receipt_email === customerEmail) {
-              const paymentAmount = payment.amount / 100;
-              
-              // Get payment method details for name comparison
-              let paymentName = '';
-              if (payment.charges && payment.charges.data.length > 0) {
-                const charge = payment.charges.data[0];
-                paymentName = charge.billing_details?.name || '';
-              }
-
-              const nameMatch = namesMatch(customerName, paymentName);
-              const amountMatch = amountsMatch(expectedTotal, paymentAmount);
-
-              console.log(`Payment ${payment.id}: Amount $${paymentAmount}, Name: "${paymentName}", Email match: true, Amount match: ${amountMatch}, Name match: ${nameMatch}`);
-
-              allMatches.push({
-                payment,
-                paymentAmount,
-                emailMatch: true,
-                amountMatch,
-                nameMatch,
-                paymentName,
-                matchScore: calculateMatchScore(true, amountMatch, nameMatch)
-              });
-            }
-          }
-        } catch (error: any) {
-          console.log('Error searching payments directly:', error.message);
-        }
-
-        // Remove duplicates based on payment ID
-        const uniqueMatches = allMatches.filter((match, index, self) => 
-          index === self.findIndex(m => m.payment.id === match.payment.id)
-        );
-
-        console.log(`Found ${uniqueMatches.length} unique payment matches`);
-
-        if (uniqueMatches.length > 0) {
-          // Sort by match score (best matches first)
-          uniqueMatches.sort((a, b) => b.matchScore - a.matchScore);
-          bestMatch = uniqueMatches[0];
-
-          const paymentVerified = bestMatch.emailMatch && bestMatch.amountMatch;
-
-          // Cache the payment status
-          paymentStatusCache.set(id, paymentVerified);
-
-          let statusMessage = paymentVerified 
-            ? `✅ Payment Verified: Email and amount match confirmed` 
-            : `⚠️ Payment found but verification incomplete`;
-
-          // Add detailed match information
-          const matchDetails = [];
-          matchDetails.push(`Email: ${bestMatch.emailMatch ? '✅ Match' : '❌ No match'}`);
-          matchDetails.push(`Amount: ${bestMatch.amountMatch ? '✅ Match' : `❌ Expected $${expectedTotal.toFixed(2)}, Found $${bestMatch.paymentAmount.toFixed(2)}`}`);
-          if (bestMatch.paymentName) {
-            matchDetails.push(`Name: ${bestMatch.nameMatch ? '✅ Match' : `⚠️ Order: "${customerName}", Payment: "${bestMatch.paymentName}"`}`);
-          }
-
-          statusMessage += ` (${matchDetails.join(', ')})`;
-
-          if (uniqueMatches.length > 1) {
-            statusMessage += ` [${uniqueMatches.length} total payments found for this email]`;
-          }
-
-          return res.json({
-            success: true,
-            data: {
-              paymentVerified,
-              stripeStatus: bestMatch.payment.status,
-              paymentDetails: {
-                amount: bestMatch.paymentAmount,
-                currency: bestMatch.payment.currency,
-                paymentMethod: bestMatch.payment.payment_method_types?.[0] || 'unknown',
-                createdAt: new Date(bestMatch.payment.created * 1000).toISOString(),
-              },
-              matchDetails: {
-                emailMatch: bestMatch.emailMatch,
-                amountMatch: bestMatch.amountMatch,
-                nameMatch: bestMatch.nameMatch,
-                expectedAmount: expectedTotal,
-                actualAmount: bestMatch.paymentAmount,
-                amountDifference: Math.abs(expectedTotal - bestMatch.paymentAmount),
-                paymentName: bestMatch.paymentName || 'Unknown',
-                orderName: customerName,
-                totalMatches: uniqueMatches.length
-              },
-              message: statusMessage
+              message: `✅ Payment Verified: Email match found (${customerEmail})`
             }
           });
         } else {
@@ -856,12 +716,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             success: true,
             data: {
               paymentVerified: false,
-              message: `No Stripe payments found for email: ${customerEmail}`,
-              searchDetails: {
-                emailSearched: customerEmail,
-                expectedAmount: expectedTotal,
-                affiliateCode: order.affiliateCode || null
-              }
+              message: `No Stripe payments found for email: ${customerEmail}`
             }
           });
         }
