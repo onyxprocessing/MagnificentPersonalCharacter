@@ -1,3 +1,4 @@
+
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
 async function throwIfResNotOk(res: Response) {
@@ -74,9 +75,6 @@ export const getQueryFn: <T>(options: {
     const jsonResponse = await res.json();
     console.log('API Response:', jsonResponse);
     return jsonResponse;
-
-    await throwIfResNotOk(res);
-    return await res.json();
   };
 
 export const queryClient = new QueryClient({
